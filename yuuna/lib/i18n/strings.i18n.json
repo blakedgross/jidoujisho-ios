@@ -75,6 +75,7 @@
     "options_language": "Language settings",
     "options_github": "View repository on GitHub",
     "options_attribution": "Licenses and attribution",
+    "options_export_anki_package": "Export cards for Anki",
     "options_copy": "Copy",
     "options_collapse": "Collapse",
     "options_expand": "Expand",
@@ -200,6 +201,11 @@
     "audio_unavailable": "No audio could be found.",
     "no_audio_enhancements": "No audio enhancements are assigned.",
     "card_exported": "Card exported to 『$deck』.",
+    "card_queued_for_anki_package": "Card queued for 『$deck』 ($count waiting for export).",
+    "anki_package_empty": "No cards are waiting to be exported.",
+    "anki_package_exported": "Exported $count cards. Open the file with Anki on your computer to import them.",
+    "anki_package_new_deck": "New deck",
+    "anki_package_deck_name": "Deck name",
     "info_incognito_on":
         "Incognito mode on. Dictionary, media and search history will not be tracked.",
     "info_incognito_off":

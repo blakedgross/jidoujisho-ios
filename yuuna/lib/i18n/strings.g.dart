@@ -1,9 +1,9 @@
 /// Generated file. Do not edit.
 ///
 /// Locales: 1
-/// Strings: 397
+/// Strings: 403
 ///
-/// Built on 2023-09-30 at 09:59 UTC
+/// Built on 2026-11-15 at 14:31 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -220,6 +220,7 @@ class _StringsEn implements BaseTranslations<AppLocale, _StringsEn> {
 	String get options_language => 'Language settings';
 	String get options_github => 'View repository on GitHub';
 	String get options_attribution => 'Licenses and attribution';
+	String get options_export_anki_package => 'Export cards for Anki';
 	String get options_copy => 'Copy';
 	String get options_collapse => 'Collapse';
 	String get options_expand => 'Expand';
@@ -332,6 +333,11 @@ class _StringsEn implements BaseTranslations<AppLocale, _StringsEn> {
 	String get audio_unavailable => 'No audio could be found.';
 	String get no_audio_enhancements => 'No audio enhancements are assigned.';
 	String card_exported({required Object deck}) => 'Card exported to 『${deck}』.';
+	String card_queued_for_anki_package({required Object deck, required Object count}) => 'Card queued for 『${deck}』 (${count} waiting for export).';
+	String get anki_package_empty => 'No cards are waiting to be exported.';
+	String anki_package_exported({required Object count}) => 'Exported ${count} cards. Open the file with Anki on your computer to import them.';
+	String get anki_package_new_deck => 'New deck';
+	String get anki_package_deck_name => 'Deck name';
 	String get info_incognito_on => 'Incognito mode on. Dictionary, media and search history will not be tracked.';
 	String get info_incognito_off => 'Incognito mode off. Dictionary, media and search history will be tracked.';
 	String get exit_media_title => 'Exit Media';
@@ -649,6 +655,7 @@ extension on _StringsEn {
 			case 'options_language': return 'Language settings';
 			case 'options_github': return 'View repository on GitHub';
 			case 'options_attribution': return 'Licenses and attribution';
+			case 'options_export_anki_package': return 'Export cards for Anki';
 			case 'options_copy': return 'Copy';
 			case 'options_collapse': return 'Collapse';
 			case 'options_expand': return 'Expand';
@@ -761,6 +768,11 @@ extension on _StringsEn {
 			case 'audio_unavailable': return 'No audio could be found.';
 			case 'no_audio_enhancements': return 'No audio enhancements are assigned.';
 			case 'card_exported': return ({required Object deck}) => 'Card exported to 『${deck}』.';
+			case 'card_queued_for_anki_package': return ({required Object deck, required Object count}) => 'Card queued for 『${deck}』 (${count} waiting for export).';
+			case 'anki_package_empty': return 'No cards are waiting to be exported.';
+			case 'anki_package_exported': return ({required Object count}) => 'Exported ${count} cards. Open the file with Anki on your computer to import them.';
+			case 'anki_package_new_deck': return 'New deck';
+			case 'anki_package_deck_name': return 'Deck name';
 			case 'info_incognito_on': return 'Incognito mode on. Dictionary, media and search history will not be tracked.';
 			case 'info_incognito_off': return 'Incognito mode off. Dictionary, media and search history will be tracked.';
 			case 'exit_media_title': return 'Exit Media';

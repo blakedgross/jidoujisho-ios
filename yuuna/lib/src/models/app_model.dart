@@ -30,8 +30,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:remove_emoji/remove_emoji.dart';
 import 'package:restart_app/restart_app.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:subtitle/subtitle.dart';
-import 'package:wakelock/wakelock.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:yuuna/creator.dart';
 import 'package:yuuna/dictionary.dart';
 import 'package:yuuna/language.dart';
@@ -151,9 +152,18 @@ class AppModel with ChangeNotifier {
   PackageInfo get packageInfo => _packageInfo;
   late final PackageInfo _packageInfo;
 
-  /// Used to get information on the Android version of the device.
-  AndroidDeviceInfo get androidDeviceInfo => _androidDeviceInfo;
-  late final AndroidDeviceInfo _androidDeviceInfo;
+  /// Used to get information on the Android version of the device. Null on
+  /// other platforms.
+  AndroidDeviceInfo? get androidDeviceInfo => _androidDeviceInfo;
+  AndroidDeviceInfo? _androidDeviceInfo;
+
+  /// Queues cards and writes Anki packages on platforms without AnkiDroid.
+  /// Null on Android, which exports through the AnkiDroid API.
+  AnkiPackageExporter? _ankiPackageExporter;
+
+  /// Whether cards are exported as Anki packages rather than through the
+  /// AnkiDroid API.
+  bool get usesAnkiPackageExport => _ankiPackageExporter != null;
 
   /// Used for caching images and audio produced from media seeds.
   DefaultCacheManager get cacheManager => _cacheManager;
@@ -464,7 +474,7 @@ class AppModel with ChangeNotifier {
           color: Colors.white,
           shape: RoundedRectangleBorder(),
         ),
-        dialogTheme: const DialogTheme(
+        dialogTheme: const DialogThemeData(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(),
         ),
@@ -546,7 +556,7 @@ class AppModel with ChangeNotifier {
           color: Color.fromARGB(255, 30, 30, 30),
           shape: RoundedRectangleBorder(),
         ),
-        dialogTheme: const DialogTheme(
+        dialogTheme: const DialogThemeData(
           backgroundColor: Color.fromARGB(255, 30, 30, 30),
           shape: RoundedRectangleBorder(),
         ),
@@ -1061,8 +1071,13 @@ class AppModel with ChangeNotifier {
 
   /// Return the app external directory found in the public DCIM directory.
   /// This path also initialises the folder if it does not exist, and includes
-  /// a .nomedia file within the folder.
+  /// a .nomedia file within the folder. Platforms without public external
+  /// storage use [prepareFallbackJidoujishoDirectory].
   Future<Directory> prepareJidoujishoDirectory() async {
+    if (!Platform.isAndroid) {
+      return prepareFallbackJidoujishoDirectory();
+    }
+
     String publicDirectory =
         await ExternalPath.getExternalStoragePublicDirectory(
             ExternalPath.DIRECTORY_DCIM);
@@ -1140,7 +1155,9 @@ class AppModel with ChangeNotifier {
   Future<void> initialise() async {
     /// Prepare entities that may be repeatedly used at runtime.
     _packageInfo = await PackageInfo.fromPlatform();
-    _androidDeviceInfo = await DeviceInfoPlugin().androidInfo;
+    if (Platform.isAndroid) {
+      _androidDeviceInfo = await DeviceInfoPlugin().androidInfo;
+    }
 
     /// Initialise persistent key-value store.
     await Hive.initFlutter();
@@ -1167,6 +1184,10 @@ class AppModel with ChangeNotifier {
         path.join(appDirectory.path, 'dictionaryImportWorkingDirectory'));
     _exportDirectory = await prepareJidoujishoDirectory();
     _alternateExportDirectory = await prepareFallbackJidoujishoDirectory();
+    if (!Platform.isAndroid) {
+      _ankiPackageExporter = AnkiPackageExporter(
+          Directory(path.join(_databaseDirectory.path, 'ankiPackageQueue')));
+    }
     _webArchiveDirectory =
         Directory(path.join(appDirectory.path, 'webArchive'));
 
@@ -1255,7 +1276,11 @@ class AppModel with ChangeNotifier {
   /// Toggle between light and dark mode.
   void toggleDarkMode() async {
     await _preferences.put('is_dark_mode', !isDarkMode);
-    Restart.restartApp();
+    if (Platform.isAndroid) {
+      Restart.restartApp();
+    } else {
+      notifyListeners();
+    }
   }
 
   /// Get the target language from persisted preferences.
@@ -1840,6 +1865,12 @@ class AppModel with ChangeNotifier {
   /// Requests for full external storage permissions. Required to handle video
   /// files and their subtitle files in the same directory.
   Future<void> requestExternalStoragePermissions() async {
+    /// iOS apps are sandboxed: media lives in the app's Documents folder,
+    /// exposed in the Files app, and needs no storage permission.
+    if (!Platform.isAndroid) {
+      return;
+    }
+
     if (isFirstTimeSetup) {
       Fluttertoast.showToast(
         msg: t.storage_permissions,
@@ -1858,7 +1889,7 @@ class AppModel with ChangeNotifier {
       await Permission.storage.request();
     }
 
-    if (_androidDeviceInfo.version.sdkInt >= 30) {
+    if (_androidDeviceInfo!.version.sdkInt >= 30) {
       final manageStorageGranted =
           await Permission.manageExternalStorage.isGranted;
       if (!manageStorageGranted) {
@@ -1908,6 +1939,9 @@ class AppModel with ChangeNotifier {
   /// Used to ask for AnkiDroid database permissions. Should be called at
   /// startup.
   Future<void> requestAnkidroidPermissions() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
     await methodChannel.invokeMethod('requestAnkidroidPermissions');
   }
 
@@ -1981,6 +2015,10 @@ class AppModel with ChangeNotifier {
   /// Get a list of decks from the Anki background service that can be used
   /// for export.
   Future<List<String>> getDecks() async {
+    if (_ankiPackageExporter != null) {
+      return _ankiPackageExporter!.decks;
+    }
+
     try {
       Map<dynamic, dynamic> result =
           await methodChannel.invokeMethod('getDecks');
@@ -1997,6 +2035,11 @@ class AppModel with ChangeNotifier {
   /// Get a list of models from the Anki background service that can be used
   /// for export.
   Future<List<String>> getModelList() async {
+    /// Anki packages always carry the standard note type.
+    if (usesAnkiPackageExport) {
+      return [AnkiMapping.standardModelName];
+    }
+
     try {
       Map<dynamic, dynamic> result =
           await methodChannel.invokeMethod('getModelList');
@@ -2018,6 +2061,13 @@ class AppModel with ChangeNotifier {
   /// Get a list of field names for a given [model] name in Anki. This function
   /// assumes that the model name can be found in [getDecks] and is valid.
   Future<List<String>> getFieldList(String model) async {
+    if (usesAnkiPackageExport) {
+      if (model != AnkiMapping.standardModelName) {
+        throw ArgumentError.value(model, 'model', 'Unknown note type');
+      }
+      return List.of(AnkiPackageExporter.standardFields);
+    }
+
     try {
       List<String> fields = List<String>.from(
         await methodChannel.invokeMethod(
@@ -2038,6 +2088,10 @@ class AppModel with ChangeNotifier {
   /// Given a value and a model name, checks if there are cards that have a
   /// first field with a matching value.
   Future<bool> checkForDuplicates(String key) async {
+    if (_ankiPackageExporter != null) {
+      return _ankiPackageExporter!.hasDuplicate(key);
+    }
+
     try {
       final result = await methodChannel.invokeMethod(
         'checkForDuplicates',
@@ -2125,6 +2179,20 @@ class AppModel with ChangeNotifier {
     List<String> tags =
         creatorFieldValues.textValues[TagsField.instance]?.split(' ') ?? [];
 
+    if (_ankiPackageExporter != null) {
+      _ankiPackageExporter!.addNote(deck: deck, fields: fields, tags: tags);
+      Fluttertoast.showToast(
+        msg: t.card_queued_for_anki_package(
+          deck: deck,
+          count: _ankiPackageExporter!.pendingNotes.length,
+        ),
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
+      onSuccess.call();
+      return;
+    }
+
     try {
       await methodChannel.invokeMethod(
         'addNote',
@@ -2202,6 +2270,15 @@ class AppModel with ChangeNotifier {
       exportFile.copySync(destinationPath);
     }
 
+    if (_ankiPackageExporter != null) {
+      String name = _ankiPackageExporter!.addMedia(
+        file: destinationFile,
+        preferredName: preferredName,
+      );
+      destinationFile.deleteSync();
+      return name;
+    }
+
     try {
       String response = await methodChannel.invokeMethod(
         'addFileToMedia',
@@ -2235,6 +2312,59 @@ class AppModel with ChangeNotifier {
         );
       }
     }
+  }
+
+  /// Remember a new deck name for Anki package export.
+  void addAnkiPackageDeck(String name) {
+    _ankiPackageExporter!.addDeck(name);
+    notifyListeners();
+  }
+
+  /// Write queued cards to an Anki package in the Documents folder (visible
+  /// in the Files app) and open the share sheet so it can be sent to a
+  /// computer. The queue is cleared once the package is handed off.
+  Future<void> exportAnkiPackage() async {
+    AnkiPackageExporter exporter = _ankiPackageExporter!;
+    int count = exporter.pendingNotes.length;
+    if (count == 0) {
+      Fluttertoast.showToast(
+        msg: t.anki_package_empty,
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
+      return;
+    }
+
+    Directory outputDirectory =
+        Directory(path.join(appDirectory.path, 'Anki Exports'));
+    outputDirectory.createSync(recursive: true);
+    File packageFile = await exporter.buildPackage(outputDirectory);
+
+    /// The share sheet is a popover on regular-width windows (iPhone Duo
+    /// unfolded, iPad) and needs an anchor.
+    Size windowSize = WidgetsBinding
+            .instance.platformDispatcher.views.first.physicalSize /
+        WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    ShareResult result = await Share.shareXFiles(
+      [XFile(packageFile.path)],
+      sharePositionOrigin: Rect.fromCenter(
+        center: windowSize.center(Offset.zero),
+        width: 1,
+        height: 1,
+      ),
+    );
+
+    if (result.status == ShareResultStatus.dismissed) {
+      return;
+    }
+
+    exporter.markExported();
+    Fluttertoast.showToast(
+      msg: t.anki_package_exported(count: count),
+      toastLength: Toast.LENGTH_LONG,
+      gravity: ToastGravity.BOTTOM,
+    );
+    notifyListeners();
   }
 
   /// Returns the list that will be passed to the Anki card creation API to
@@ -2471,7 +2601,7 @@ class AppModel with ChangeNotifier {
     _overrideDictionaryColor = null;
     _overrideDictionaryTheme = null;
 
-    await Wakelock.enable();
+    await WakelockPlus.enable();
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
     if (item != null && mediaSource.implementsHistory) {
@@ -2513,7 +2643,7 @@ class AppModel with ChangeNotifier {
     _overrideDictionaryTheme = null;
     blockCreatorInitialMedia = false;
     isProcessingEmbeddedSubtitles = false;
-    await Wakelock.disable();
+    await WakelockPlus.disable();
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     await mediaSource.onSourceExit(
       appModel: this,
@@ -3101,7 +3231,7 @@ class AppModel with ChangeNotifier {
     FlutterClipboard.copy(term);
 
     /// Redundant to do this with the share notification on Android
-    if (_androidDeviceInfo.version.sdkInt < 33) {
+    if (_androidDeviceInfo == null || _androidDeviceInfo!.version.sdkInt < 33) {
       Fluttertoast.showToast(
         msg: t.copied_to_clipboard,
         toastLength: Toast.LENGTH_SHORT,
@@ -3183,7 +3313,11 @@ class AppModel with ChangeNotifier {
       directories.add(lastPickedDirectory);
     }
 
-    List<String> paths = await ExternalPath.getExternalStorageDirectories();
+    /// iOS has no external storage roots; the app's Documents folder is the
+    /// user-visible root in the Files app.
+    List<String> paths = Platform.isAndroid
+        ? await ExternalPath.getExternalStorageDirectories()
+        : [appDirectory.path];
     for (String path in paths) {
       Directory directory = Directory(path);
       if (!directories.contains(directory)) {

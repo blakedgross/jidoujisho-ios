@@ -1,0 +1,171 @@
+PODS:
+  - async_zip (0.0.1):
+    - Flutter
+  - audio_service (0.0.1):
+    - Flutter
+  - audio_session (0.0.1):
+    - Flutter
+  - document_file_save_plus (0.0.1):
+    - Flutter
+  - external_app_launcher (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+  - flutter_archive (0.0.1):
+    - Flutter
+    - ZIPFoundation (= 0.9.13)
+  - flutter_charset_detector_ios (0.0.1):
+    - Flutter
+    - UniversalDetector2 (= 2.0.1)
+  - flutter_exit_app (1.1.2):
+    - Flutter
+  - flutter_gpt_tokenizer (0.1.1)
+  - flutter_inappwebview (0.0.1):
+    - Flutter
+    - flutter_inappwebview/Core (= 0.0.1)
+    - OrderedSet (~> 5.0)
+  - flutter_inappwebview/Core (0.0.1):
+    - Flutter
+    - OrderedSet (~> 5.0)
+  - flutter_logs (0.0.1):
+    - Flutter
+    - ZIPFoundation
+  - flutter_vlc_player (3.0.3):
+    - Flutter
+    - MobileVLCKit (~> 3.5.1)
+  - image_picker_ios (0.0.1):
+    - Flutter
+  - isar_flutter_libs (1.0.0):
+    - Flutter
+  - just_audio (0.0.1):
+    - Flutter
+  - mecab_dart (0.0.1):
+    - Flutter
+  - MobileVLCKit (3.5.1)
+  - nowplaying (0.0.1):
+    - Flutter
+  - OrderedSet (5.0.0)
+  - package_info (0.0.1):
+    - Flutter
+  - permission_handler_apple (9.0.4):
+    - Flutter
+  - share_plus (0.0.1):
+    - Flutter
+  - UniversalDetector2 (2.0.1)
+  - uri_to_file (0.0.1):
+    - Flutter
+  - url_launcher_ios (0.0.1):
+    - Flutter
+  - ZIPFoundation (0.9.13)
+
+DEPENDENCIES:
+  - async_zip (from `.symlinks/plugins/async_zip/ios`)
+  - audio_service (from `.symlinks/plugins/audio_service/ios`)
+  - audio_session (from `.symlinks/plugins/audio_session/ios`)
+  - document_file_save_plus (from `.symlinks/plugins/document_file_save_plus/ios`)
+  - external_app_launcher (from `.symlinks/plugins/external_app_launcher/ios`)
+  - Flutter (from `Flutter`)
+  - flutter_archive (from `.symlinks/plugins/flutter_archive/ios`)
+  - flutter_charset_detector_ios (from `.symlinks/plugins/flutter_charset_detector_ios/ios`)
+  - flutter_exit_app (from `.symlinks/plugins/flutter_exit_app/ios`)
+  - flutter_gpt_tokenizer (from `.symlinks/plugins/flutter_gpt_tokenizer/ios`)
+  - flutter_inappwebview (from `.symlinks/plugins/flutter_inappwebview/ios`)
+  - flutter_logs (from `.symlinks/plugins/flutter_logs/ios`)
+  - flutter_vlc_player (from `.symlinks/plugins/flutter_vlc_player/ios`)
+  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
+  - isar_flutter_libs (from `.symlinks/plugins/isar_flutter_libs/ios`)
+  - just_audio (from `.symlinks/plugins/just_audio/ios`)
+  - mecab_dart (from `.symlinks/plugins/mecab_dart/ios`)
+  - nowplaying (from `.symlinks/plugins/nowplaying/ios`)
+  - package_info (from `.symlinks/plugins/package_info/ios`)
+  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
+  - share_plus (from `.symlinks/plugins/share_plus/ios`)
+  - uri_to_file (from `.symlinks/plugins/uri_to_file/ios`)
+  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
+
+SPEC REPOS:
+  trunk:
+    - MobileVLCKit
+    - OrderedSet
+    - UniversalDetector2
+    - ZIPFoundation
+
+EXTERNAL SOURCES:
+  async_zip:
+    :path: ".symlinks/plugins/async_zip/ios"
+  audio_service:
+    :path: ".symlinks/plugins/audio_service/ios"
+  audio_session:
+    :path: ".symlinks/plugins/audio_session/ios"
+  document_file_save_plus:
+    :path: ".symlinks/plugins/document_file_save_plus/ios"
+  external_app_launcher:
+    :path: ".symlinks/plugins/external_app_launcher/ios"
+  Flutter:
+    :path: Flutter
+  flutter_archive:
+    :path: ".symlinks/plugins/flutter_archive/ios"
+  flutter_charset_detector_ios:
+    :path: ".symlinks/plugins/flutter_charset_detector_ios/ios"
+  flutter_exit_app:
+    :path: ".symlinks/plugins/flutter_exit_app/ios"
+  flutter_gpt_tokenizer:
+    :path: ".symlinks/plugins/flutter_gpt_tokenizer/ios"
+  flutter_inappwebview:
+    :path: ".symlinks/plugins/flutter_inappwebview/ios"
+  flutter_logs:
+    :path: ".symlinks/plugins/flutter_logs/ios"
+  flutter_vlc_player:
+    :path: ".symlinks/plugins/flutter_vlc_player/ios"
+  image_picker_ios:
+    :path: ".symlinks/plugins/image_picker_ios/ios"
+  isar_flutter_libs:
+    :path: ".symlinks/plugins/isar_flutter_libs/ios"
+  just_audio:
+    :path: ".symlinks/plugins/just_audio/ios"
+  mecab_dart:
+    :path: ".symlinks/plugins/mecab_dart/ios"
+  nowplaying:
+    :path: ".symlinks/plugins/nowplaying/ios"
+  package_info:
+    :path: ".symlinks/plugins/package_info/ios"
+  permission_handler_apple:
+    :path: ".symlinks/plugins/permission_handler_apple/ios"
+  share_plus:
+    :path: ".symlinks/plugins/share_plus/ios"
+  uri_to_file:
+    :path: ".symlinks/plugins/uri_to_file/ios"
+  url_launcher_ios:
+    :path: ".symlinks/plugins/url_launcher_ios/ios"
+
+SPEC CHECKSUMS:
+  async_zip: 1d6a4f059b13bd0f2c60eb2e32666d33166b96bd
+  audio_service: 2023a4a1bdb2fd1443e7b00bdbdb1baa321525db
+  audio_session: 9bdd3bf46960d4322cb8c3cb6138295dcfe84eee
+  document_file_save_plus: 47b52a647efb29f7d431af45a856ce1a841f32fc
+  external_app_launcher: 3411245965270a74040a3de17e27bd02b8abb905
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  flutter_archive: 6eb3c5273c448b55cd5e87421cc72976de255322
+  flutter_charset_detector_ios: 44497a50ef93045686b1900df36a1556c8d8fe54
+  flutter_exit_app: b898717df98947dab2f53c4ad8fb78a0c210128c
+  flutter_gpt_tokenizer: 0d9e224c1ff3bc0ae48f802fc87258c08057350c
+  flutter_inappwebview: 3fe3b3c8a12b23c9bc2ee37f7ae654b9f66375c1
+  flutter_logs: 30a36079651dcdfb260dbff875bf882bbbcaa22e
+  flutter_vlc_player: 9f4c6ba897a7193afeb58a8ebf03f6e740c9fc7c
+  image_picker_ios: afb77645f1e1060a27edb6793996ff9b42256909
+  isar_flutter_libs: 9fc2cfb928c539e1b76c481ba5d143d556d94920
+  just_audio: 6c031bb61297cf218b4462be616638e81c058e97
+  mecab_dart: 8690974dc789a7ee4a7ad3e77b21d896e2605728
+  MobileVLCKit: 144d5f565512d1147d63b0fa1379231b3fd66535
+  nowplaying: c4b5227d69c75957c75857021e2d4de87c00cde4
+  OrderedSet: aaeb196f7fef5a9edf55d89760da9176ad40b93c
+  package_info: cce50adca9873c79f931618469d2114b91d71189
+  permission_handler_apple: 08f8206adee3b28ea33966c224b7228eabaaf6a9
+  share_plus: de6030e33b4e106470e09322d87cf2a4258d2d1d
+  UniversalDetector2: 7c9ffd935cf050eeb19edf7e90f6febe3743a1af
+  uri_to_file: 9b49120346eb6afc2a6885559de0c6ef331e3d3f
+  url_launcher_ios: b7f13d9491e07f5230bf3e056ab68678f896980a
+  ZIPFoundation: ae5b4b813d216d3bf0a148773267fff14bd51d37
+
+PODFILE CHECKSUM: 2e74fb192655b2e36e231852ff49e9a8ce6ff894
+
+COCOAPODS: 1.17.0

@@ -45,6 +45,9 @@ class CreatorPage extends BasePage {
 class _CreatorPageState extends BasePageState<CreatorPage> {
   bool get isCardEditing => !widget.editEnhancements && !widget.editFields;
 
+  /// Decks offered in the dropdown. Anki package export can add to these.
+  late final List<String> _decks = List.of(widget.decks);
+
   /// Get the export details pertaining to the fields.
   CreatorFieldValues get exportDetails => creatorModel.getExportDetails(ref);
 
@@ -594,15 +597,28 @@ class _CreatorPageState extends BasePageState<CreatorPage> {
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
-        JidoujishoDropdown<String>(
-          enabled: !widget.editEnhancements,
-          options: widget.decks,
-          initialOption: appModel.lastSelectedDeckName,
-          generateLabel: (deckName) => deckName,
-          onChanged: (deckName) {
-            appModel.setLastSelectedDeck(deckName!);
-            setState(() {});
-          },
+        Row(
+          children: [
+            Expanded(
+              child: JidoujishoDropdown<String>(
+                key: ValueKey(appModel.lastSelectedDeckName),
+                enabled: !widget.editEnhancements,
+                options: _decks,
+                initialOption: appModel.lastSelectedDeckName,
+                generateLabel: (deckName) => deckName,
+                onChanged: (deckName) {
+                  appModel.setLastSelectedDeck(deckName!);
+                  setState(() {});
+                },
+              ),
+            ),
+            if (appModel.usesAnkiPackageExport && !widget.editEnhancements)
+              JidoujishoIconButton(
+                tooltip: t.anki_package_new_deck,
+                icon: Icons.create_new_folder_outlined,
+                onTap: showNewDeckDialog,
+              ),
+          ],
         ),
         Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
@@ -617,6 +633,50 @@ class _CreatorPageState extends BasePageState<CreatorPage> {
         ),
       ],
     );
+  }
+
+  /// Ask for a deck name to export Anki package cards into. Anki creates the
+  /// deck on import.
+  Future<void> showNewDeckDialog() async {
+    TextEditingController controller = TextEditingController();
+    String? name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.anki_package_new_deck),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(hintText: t.anki_package_deck_name),
+          onSubmitted: (value) => Navigator.pop(context, value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(t.dialog_cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: Text(t.dialog_create),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    String deck = name?.trim() ?? '';
+    if (deck.isEmpty) {
+      return;
+    }
+
+    appModel.addAnkiPackageDeck(deck);
+    appModel.setLastSelectedDeck(deck);
+    setState(() {
+      if (!_decks.contains(deck)) {
+        _decks
+          ..add(deck)
+          ..sort();
+      }
+    });
   }
 
   Widget buildTextFields() {

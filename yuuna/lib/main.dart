@@ -12,7 +12,7 @@ import 'package:receive_intent/receive_intent.dart' as intents;
 import 'package:stack_trace/stack_trace.dart';
 import 'package:spaces/spaces.dart';
 import 'package:uri_to_file/uri_to_file.dart';
-import 'package:wakelock/wakelock.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:yuuna/creator.dart';
 import 'package:yuuna/media.dart';
@@ -54,7 +54,7 @@ void main() {
 
     /// Ensure the top and bottom bars are shown at launch and wake prevention
     /// is disabled if not reverted from entering a media source.
-    Wakelock.disable();
+    WakelockPlus.disable();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -116,15 +116,22 @@ class JidoujishoApp extends ConsumerStatefulWidget {
 class _JidoujishoAppState extends ConsumerState<JidoujishoApp>
     with WidgetsBindingObserver {
   final navigatorKey = GlobalKey<NavigatorState>();
-  bool _isMainIntent = false;
 
-  late final StreamSubscription _intentsSubscription;
+  /// Android launches via intents and only shows the home page for the MAIN
+  /// intent. Other platforms have no intents and always show the home page.
+  bool _isMainIntent = !Platform.isAndroid;
+
+  StreamSubscription? _intentsSubscription;
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addObserver(this);
+
+    if (!Platform.isAndroid) {
+      return;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       /// Receive all intents and parse them depending on which they are.
@@ -146,7 +153,7 @@ class _JidoujishoAppState extends ConsumerState<JidoujishoApp>
 
   @override
   void dispose() {
-    _intentsSubscription.cancel();
+    _intentsSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

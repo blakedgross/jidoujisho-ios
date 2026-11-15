@@ -18,7 +18,7 @@ import 'package:receive_intent/receive_intent.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:spaces/spaces.dart';
 import 'package:subtitle/subtitle.dart';
-import 'package:wakelock/wakelock.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:yuuna/creator.dart';
 import 'package:yuuna/media.dart';
@@ -144,7 +144,7 @@ class _PlayerSourcePageState extends BaseSourcePageState<PlayerSourcePage>
             ]);
           }
 
-          Wakelock.enable();
+          WakelockPlus.enable();
         }
 
         break;
@@ -163,7 +163,9 @@ class _PlayerSourcePageState extends BaseSourcePageState<PlayerSourcePage>
           }
         }
 
-        if (source is PlayerNetworkStreamSource) {
+        /// Network streams on Android are launched as an external player via
+        /// intent; report progress back to the caller and exit.
+        if (Platform.isAndroid && source is PlayerNetworkStreamSource) {
           await ReceiveIntent.setResult(
             kActivityResultOk,
             action: 'is.xyz.mpv.MPVActivity.result',
@@ -467,7 +469,7 @@ class _PlayerSourcePageState extends BaseSourcePageState<PlayerSourcePage>
           DeviceOrientation.landscapeRight,
         ]);
       }
-      await Wakelock.enable();
+      await WakelockPlus.enable();
     }
 
     _playPauseSubscription = appModel.playStream.listen((_) {
@@ -786,7 +788,7 @@ class _PlayerSourcePageState extends BaseSourcePageState<PlayerSourcePage>
   /// This updates the media item to its new position and duration and also
   /// persists the change in media history.
   void updateHistory() async {
-    if (source is PlayerNetworkStreamSource) {
+    if (Platform.isAndroid && source is PlayerNetworkStreamSource) {
       if (_positionNotifier.value.inMilliseconds != 0) {
         ReceiveIntent.setResult(
           kActivityResultOk,
@@ -2501,7 +2503,7 @@ class _PlayerSourcePageState extends BaseSourcePageState<PlayerSourcePage>
 
   /// This hides or shows the menu.
   void toggleMenuVisibility() async {
-    Wakelock.enable();
+    WakelockPlus.enable();
     _menuHideTimer?.cancel();
     _isMenuHidden.value = !_isMenuHidden.value;
     if (!_isMenuHidden.value) {

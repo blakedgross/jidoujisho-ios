@@ -350,6 +350,12 @@ class _HomePageState extends BasePageState<HomePage>
         icon: Icons.switch_account,
         action: appModel.showProfilesMenu,
       ),
+      if (appModel.usesAnkiPackageExport)
+        buildPopupItem(
+          label: t.options_export_anki_package,
+          icon: Icons.ios_share,
+          action: appModel.exportAnkiPackage,
+        ),
       buildPopupItem(
         label: t.options_github,
         icon: Icons.code,
