@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:document_file_save_plus/document_file_save_plus.dart';
 import 'package:flutter/material.dart';
@@ -287,6 +289,27 @@ class _ReaderTtuSourcePageState extends BaseSourcePageState<ReaderTtuSourcePage>
           action: PermissionResponseAction.GRANT,
         );
       },
+      /// WKWebView never grants navigator.storage.persist(), so ッツ warns
+      /// that books and bookmarks may be evicted. The WebView's storage lives
+      /// in the app container and is not subject to browser eviction, so
+      /// report it as persisted. Bookmark on page turn by default, as iOS
+      /// can end the app without the reader being closed.
+      initialUserScripts: Platform.isIOS
+          ? UnmodifiableListView([
+              UserScript(
+                source: '''
+if (navigator.storage) {
+  navigator.storage.persist = () => Promise.resolve(true);
+  navigator.storage.persisted = () => Promise.resolve(true);
+}
+if (localStorage.getItem('autoBookmark') === null) {
+  localStorage.setItem('autoBookmark', '1');
+}
+''',
+                injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+              ),
+            ])
+          : null,
       initialSettings: InAppWebViewSettings(
         allowFileAccessFromFileURLs: true,
         allowUniversalAccessFromFileURLs: true,
@@ -419,10 +442,35 @@ class _ReaderTtuSourcePageState extends BaseSourcePageState<ReaderTtuSourcePage>
     await _controller.setContextMenu(contextMenu);
   }
 
+  /// On Android the manager button opens the book manager; there is no back
+  /// button on iOS, so it returns to the app instead.
+  void onTtuExit() {
+    if (Platform.isIOS) {
+      exitSourcePage();
+      return;
+    }
+
+    int port =
+        ReaderTtuSource.instance.getPortForLanguage(appModel.targetLanguage);
+    _controller.loadUrl(
+      urlRequest: URLRequest(
+        url: WebUri('http://localhost:$port/manage.html'),
+      ),
+    );
+  }
+
   void onConsoleMessage(
     InAppWebViewController controller,
     ConsoleMessage message,
   ) async {
+    /// ッツ's manager and exit buttons hand control back to the app. The tap
+    /// that presses them also posts a lookup message, which would debounce
+    /// the exit away.
+    if (message.message == '{"jidoujisho-message-type":"exit"}') {
+      onTtuExit();
+      return;
+    }
+
     DateTime now = DateTime.now();
     if (lastMessageTime != null &&
         now.difference(lastMessageTime!) < consoleMessageDebounce) {

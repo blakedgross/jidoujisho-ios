@@ -1210,6 +1210,7 @@ class _PlayerSourcePageState extends BaseSourcePageState<PlayerSourcePage>
             child: Row(
               children: [
                 const Space.small(),
+                if (Platform.isIOS) buildExitButton(),
                 buildPlayButton(),
                 buildDurationAndPosition(),
                 buildSlider(),
@@ -1221,6 +1222,20 @@ class _PlayerSourcePageState extends BaseSourcePageState<PlayerSourcePage>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// iOS has no back button; this asks to leave the player, like Android's
+  /// back button does.
+  Widget buildExitButton() {
+    return Material(
+      color: Colors.transparent,
+      child: JidoujishoIconButton(
+        size: 24,
+        icon: Icons.arrow_back,
+        tooltip: t.exit_media_title,
+        onTap: () => Navigator.of(context).maybePop(),
       ),
     );
   }

@@ -1,3 +1,26 @@
+diff --git a/apps/web/src/lib/components/book-card/book-manager-header.svelte b/apps/web/src/lib/components/book-card/book-manager-header.svelte
+index c09aad3..b8cec3b 100644
+--- a/apps/web/src/lib/components/book-card/book-manager-header.svelte
++++ b/apps/web/src/lib/components/book-card/book-manager-header.svelte
+@@ -432,13 +432,16 @@
+             <MergedHeaderIcon
+               items={isOldUrl
+                 ? [
+-                    mergeEntries.MANAGE,
++                    mergeEntries.EXIT,
+                     mergeEntries.DOMAIN_HINT,
+                     mergeEntries.BUG_REPORT,
+                     mergeEntries.SETTINGS
+                   ]
+-                : [mergeEntries.MANAGE, mergeEntries.BUG_REPORT, mergeEntries.SETTINGS]}
++                : [mergeEntries.EXIT, mergeEntries.BUG_REPORT, mergeEntries.SETTINGS]}
+               on:action={({ detail }) => {
++                if (detail === mergeEntries.EXIT.label) {
++                  console.log(JSON.stringify({ 'jidoujisho-message-type': 'exit' }));
++                }
+                 if (detail === mergeEntries.BUG_REPORT.label) {
+                   dispatch('bugReportClick');
+                 }
 diff --git a/apps/web/src/lib/components/book-reader/book-reader-paginated/book-reader-paginated.svelte b/apps/web/src/lib/components/book-reader/book-reader-paginated/book-reader-paginated.svelte
 index 22e9cd1..367d8b3 100644
 --- a/apps/web/src/lib/components/book-reader/book-reader-paginated/book-reader-paginated.svelte
@@ -215,6 +238,19 @@ index 282d39b..e03d740 100644
      const isUser = true;
  
      if (this.translateX) {
+diff --git a/apps/web/src/lib/components/merged-header-icon/merged-entries.ts b/apps/web/src/lib/components/merged-header-icon/merged-entries.ts
+index 4234901..1c0858b 100644
+--- a/apps/web/src/lib/components/merged-header-icon/merged-entries.ts
++++ b/apps/web/src/lib/components/merged-header-icon/merged-entries.ts
+@@ -21,5 +21,7 @@ export const mergeEntries = {
+   BUG_REPORT: { routeId: '', label: 'Bug Report', icon: faBug },
+   FOLDER_IMPORT: { routeId: '', label: 'Import Folder(s)', icon: faFolderPlus },
+   FILE_IMPORT: { routeId: '', label: 'Import File(s)', icon: faFileArrowUp },
+-  BACKUP_IMPORT: { routeId: '', label: 'Import Backup', icon: faFileZipper }
++  BACKUP_IMPORT: { routeId: '', label: 'Import Backup', icon: faFileZipper },
++  // jidoujisho: returns from the book manager to the app.
++  EXIT: { routeId: '', label: 'Exit', icon: faSignOutAlt }
+ };
 diff --git a/apps/web/src/lib/data/storage/handler/backup-handler.ts b/apps/web/src/lib/data/storage/handler/backup-handler.ts
 index 3ff9d25..e4b9451 100644
 --- a/apps/web/src/lib/data/storage/handler/backup-handler.ts
@@ -252,3 +288,21 @@ index 3ff9d25..e4b9451 100644
      } else if (resetOnly) {
        this.clearData();
      }
+diff --git a/apps/web/src/routes/b/+page.svelte b/apps/web/src/routes/b/+page.svelte
+index cae80e1..90b1eb5 100644
+--- a/apps/web/src/routes/b/+page.svelte
++++ b/apps/web/src/routes/b/+page.svelte
+@@ -828,6 +828,13 @@
+       ]);
+     }
+ 
++    // jidoujisho: the app is the book list here, so leaving the reader for
++    // the manager hands control back to it.
++    if (routeId === mergeEntries.MANAGE.routeId) {
++      console.log(JSON.stringify({ 'jidoujisho-message-type': 'exit' }));
++      return;
++    }
++
+     goto(`${pagePath}${routeId}`);
+   }
+ 

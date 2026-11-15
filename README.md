@@ -179,9 +179,11 @@ A primer on the basics of the application is as follows.
 
 This fork runs on iOS 15 and later and is built with Flutter 3.47 and Xcode 27.
 
-* 🗂️ **Put media in the Files app** under *On My iPhone › jidoujisho*. The in-app file pickers open that folder. A Mokuro volume needs its HTML file and image folder next to each other.
+* 🗂️ **Files**: dictionaries, books and videos are picked with the system file picker, from anywhere in Files (iCloud Drive, Downloads, *On My iPhone › jidoujisho*). For **Mokuro**, pick the folder holding the volume's HTML file and its image folder; jidoujisho copies it into *On My iPhone › jidoujisho › Mokuro*, since the reader can only open files inside the app.
+* ↩️ **Leaving readers**: iOS has no back button. Use the back arrow in Mokuro's menu or the player's menu, or the exit button in ッツ Ebook Reader's header or book manager. ッツ keeps reading positions and bookmarks between launches.
 * 📦 **Anki on a computer**: iOS has no AnkiDroid, so exporting a card queues it. To send the queue, pick **Export cards for Anki** from the home menu. It writes a `.apkg` (standard *jidoujisho Kinomoto* note type, media included) to *Anki Exports* and opens the share sheet. AirDrop or save it to the computer, then open it in Anki to import. The deck button next to the deck list in the Card Creator adds a deck; Anki creates it on import.
 * 📖 **Two-page spreads**: on an unfolded iPhone Duo, or any window that is landscape and at least 600pt on its short side (iPads, Android tablets and foldables), Mokuro manga and ッツ Ebook Reader books show two pages side by side. Vertical books use right-to-left page order. Folding, unfolding and rotating switch between one and two pages on the fly. While the Duo is half-folded the gutter widens to the fold, so nothing lands in the crease.
+* 🕐 On the iPhone Duo the status bar, a column down the right edge of both displays, is hidden so pages use the full width.
 * 🔧 The bundled ッツ Ebook Reader is rebuilt from upstream commit `8d7115f` with jidoujisho's changes. Run `yuuna/tool/ttu-ebook-reader/build.sh` to regenerate `yuuna/assets/ttu-ebook-reader`.
 * 🛠️ Build: `cd yuuna && flutter build ios`. Open `ios/Runner.xcworkspace` in Xcode to sign and run on a device.
 

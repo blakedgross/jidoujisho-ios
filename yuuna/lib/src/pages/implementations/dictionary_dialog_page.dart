@@ -162,6 +162,23 @@ class _DictionaryDialogPageState extends BasePageState with ChangeNotifier {
 
         await FilePicker.clearTemporaryFiles();
 
+        bool isProgressShown = false;
+        void showProgress() {
+          if (isProgressShown) {
+            return;
+          }
+          isProgressShown = true;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => DictionaryDialogImportPage(
+              progressNotifier: progressNotifier,
+              countNotifier: countNotifier,
+              totalNotifier: totalNotifier,
+            ),
+          );
+        }
+
         FileType type = appModel.lastSelectedDictionaryFormat.fileType;
         FilePickerResult? result = await FilePicker.pickFiles(
           /// Change when adding multiple dictionary formats.
@@ -170,26 +187,21 @@ class _DictionaryDialogPageState extends BasePageState with ChangeNotifier {
               ? null
               : appModel.lastSelectedDictionaryFormat.allowedExtensions,
           allowMultiple: true,
+          /// Shows progress while large files are still being copied. iOS
+          /// copies before returning and never reports loading.
           onFileLoading: (status) {
             if (status == FilePickerStatus.done) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => DictionaryDialogImportPage(
-                  progressNotifier: progressNotifier,
-                  countNotifier: countNotifier,
-                  totalNotifier: totalNotifier,
-                ),
-              );
+              showProgress();
             }
           },
         );
         if (result == null) {
-          if (mounted) {
+          if (mounted && isProgressShown) {
             Navigator.pop(context);
           }
           return;
         }
+        showProgress();
 
         totalNotifier.value = result.files.length;
         for (int i = 0; i < result.files.length; i++) {

@@ -387,7 +387,9 @@ class FloatingSearchBar extends ImplicitlyAnimatedWidget {
     this.controller,
     this.textInputAction = TextInputAction.search,
     this.textInputType = TextInputType.text,
-    this.autocorrect = true,
+    // jidoujisho: searches are dictionary terms and romaji, which iOS
+    // autocorrect rewrites into English words.
+    this.autocorrect = false,
     this.toolbarOptions,
     Duration? showAfter,
     this.isScrollControlled = false,

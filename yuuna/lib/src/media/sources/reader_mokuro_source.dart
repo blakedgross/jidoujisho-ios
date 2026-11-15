@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:filesystem_picker/filesystem_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -199,6 +200,52 @@ class ReaderMokuroSource extends ReaderMediaSource {
     );
   }
 
+  /// Native folder picker that copies the picked folder into the app's
+  /// Documents folder. See FolderImportPlugin in the iOS Runner.
+  static const MethodChannel _folderImportChannel =
+      MethodChannel('app.arianneorpilla.yuuna/folder_import');
+
+  /// Let the user pick a volume's folder anywhere in Files and bring it into
+  /// the app's Documents/Mokuro folder, where the reader can load it.
+  /// Returns the local folder, or null if cancelled or the import failed.
+  Future<Directory?> importFolderFromFiles({
+    required BuildContext context,
+    required AppModel appModel,
+  }) async {
+    /// The picker covers this; it shows while the folder is copied.
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 24),
+            Expanded(child: Text(t.import_in_progress)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      String? folder = await _folderImportChannel.invokeMethod<String>(
+        'importFolder',
+        {
+          'destination':
+              path.join(appModel.sharedDocumentsDirectory.path, 'Mokuro'),
+        },
+      );
+      return folder == null ? null : Directory(folder);
+    } on PlatformException catch (e) {
+      Fluttertoast.showToast(msg: e.message ?? e.code);
+      return null;
+    } finally {
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+    }
+  }
+
   /// Launches a file picker and opens a media
   void launchFilePicker(
       {required BuildContext context,
@@ -214,7 +261,34 @@ class ReaderMokuroSource extends ReaderMediaSource {
         .toList();
 
     Iterable<String>? filePaths;
-    if (context.mounted) {
+
+    /// iOS keeps files in the Files app, so pick the volume's folder there.
+    /// A folder with a single volume opens directly; otherwise the volume is
+    /// chosen from inside the imported folder.
+    if (Platform.isIOS && context.mounted) {
+      Directory? folder =
+          await importFolderFromFiles(context: context, appModel: appModel);
+      if (folder == null) {
+        return;
+      }
+
+      List<String> volumes = folder
+          .listSync(recursive: true)
+          .whereType<File>()
+          .map((file) => file.path)
+          .where((filePath) => filePath.toLowerCase().endsWith('.html'))
+          .toList();
+      if (volumes.isEmpty) {
+        Fluttertoast.showToast(msg: t.invalid_mokuro_file);
+        return;
+      }
+      if (volumes.length == 1) {
+        filePaths = volumes;
+      }
+      rootDirectories = [folder];
+    }
+
+    if (filePaths == null && context.mounted) {
       filePaths = await FilesystemPicker.open(
         allowedExtensions: ['.html'],
         context: context,

@@ -79,6 +79,20 @@ class BaseSourcePageState<T extends BaseSourcePage> extends BasePageState<T> {
   final _popupPositionNotifier =
       ValueNotifier<JidoujishoPopupPosition?>(JidoujishoPopupPosition.topHalf);
 
+  /// Leave the source page and close its media.
+  Future<void> exitSourcePage() async {
+    await onSourcePagePop();
+
+    if (mounted) {
+      Navigator.pop(context, true);
+    }
+    await appModel.closeMedia(
+      ref: ref,
+      mediaSource: appModel.currentMediaSource!,
+      item: widget.item,
+    );
+  }
+
   /// Standard warning dialog for leaving a source page. All sources should
   /// use this and wrap their [build] function with a [WillPopScope].
   Future<bool> onWillPop() async {
@@ -88,24 +102,14 @@ class BaseSourcePageState<T extends BaseSourcePage> extends BasePageState<T> {
       content: Text(t.exit_media_description),
       actions: <Widget>[
         TextButton(
-            child: Text(
-              t.dialog_exit,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.primary,
-              ),
+          onPressed: exitSourcePage,
+          child: Text(
+            t.dialog_exit,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
             ),
-            onPressed: () async {
-              await onSourcePagePop();
-
-              if (mounted) {
-                Navigator.pop(context, true);
-              }
-              await appModel.closeMedia(
-                ref: ref,
-                mediaSource: appModel.currentMediaSource!,
-                item: widget.item,
-              );
-            }),
+          ),
+        ),
         TextButton(
           child: Text(
             t.dialog_cancel,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -370,6 +371,9 @@ class _MokuroCatalogBrowsePageState
               await injectDarkTheme();
             }
             await controller.evaluateJavascript(source: javascriptToExecute);
+            if (Platform.isIOS) {
+              await controller.evaluateJavascript(source: exitButtonJs);
+            }
 
             await updateSpread();
 
@@ -568,6 +572,13 @@ document.getElementById('pageIdxDisplay').style.color = 'white';
     InAppWebViewController controller,
     ConsoleMessage message,
   ) async {
+    /// The tap that presses the exit button also posts a lookup message,
+    /// which would debounce the exit away.
+    if (message.message == exitMessage) {
+      exitSourcePage();
+      return;
+    }
+
     DateTime now = DateTime.now();
     if (lastMessageTime != null &&
         now.difference(lastMessageTime!) < consoleMessageDebounce) {
@@ -729,6 +740,25 @@ document.getElementById('pageIdxDisplay').style.color = 'white';
         break;
     }
   }
+
+  /// Posted by the exit button injected by [exitButtonJs].
+  static const String exitMessage = '{"jidoujisho-message-type":"exit"}';
+
+  /// iOS has no back button, so Mokuro's menu gets one that leaves the reader.
+  static const String exitButtonJs = '''
+if (!document.getElementById('jidoujishoExit')) {
+  const exitButton = document.createElement('button');
+  exitButton.id = 'jidoujishoExit';
+  exitButton.className = 'menuButton';
+  exitButton.innerHTML = '<svg width="21px" height="21px" viewBox="0 0 21 21"><path d="M13 4 L6.5 10.5 L13 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  exitButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    console.log(JSON.stringify({ 'jidoujisho-message-type': 'exit' }));
+  });
+  const topMenu = document.getElementById('topMenu');
+  topMenu.insertBefore(exitButton, topMenu.firstChild);
+}
+''';
 
   Future<void> unselectWebViewTextSelection(
       InAppWebViewController webViewController) async {

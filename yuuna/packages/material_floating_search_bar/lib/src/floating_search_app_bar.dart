@@ -180,7 +180,7 @@ class FloatingSearchAppBar extends ImplicitlyAnimatedWidget {
     this.controller,
     this.textInputAction = TextInputAction.search,
     this.textInputType = TextInputType.text,
-    this.autocorrect = true,
+    this.autocorrect = false,
     this.toolbarOptions,
     this.onKeyEvent,
   })  : assert(progress == null || (progress is num || progress is bool)),
