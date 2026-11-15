@@ -375,6 +375,8 @@ class _MokuroCatalogBrowsePageState
               await controller.evaluateJavascript(source: exitButtonJs);
             }
 
+            await restorePosition();
+
             await updateSpread();
 
             Future.delayed(const Duration(milliseconds: 300), () {
@@ -386,6 +388,34 @@ class _MokuroCatalogBrowsePageState
         }
       },
     );
+  }
+
+  /// Text of the speech bubble of the last lookup.
+  String _bubbleText = '';
+
+  @override
+  bool get offersSentenceAssistant => true;
+
+  /// The whole speech bubble is translated or broken down, not only the
+  /// line around the looked-up word.
+  @override
+  String get assistantSentence => _bubbleText;
+
+  /// Opens the page saved to the media item. Mokuro keeps its own page in
+  /// local storage under the file's path, which does not survive on iOS:
+  /// the path holds the app's data container, which iOS moves on every app
+  /// update, so the volume would reopen at the first page.
+  Future<void> restorePosition() async {
+    int position = _mediaItem!.position;
+    if (position <= 0) {
+      return;
+    }
+
+    await _controller.evaluateJavascript(source: '''
+if (state.page_idx !== $position && state.page2_idx !== $position) {
+  updatePage($position);
+}
+''');
   }
 
   Future<void> injectDarkTheme() async {
@@ -635,6 +665,8 @@ document.getElementById('pageIdxDisplay').style.color = 'white';
           mediaSource.clearCurrentSentence();
           return;
         }
+
+        _bubbleText = rawText.split('\n').map((line) => line.trim()).join();
 
         try {
           /// If we cut off at a lone surrogate, offset the index back by 1. The

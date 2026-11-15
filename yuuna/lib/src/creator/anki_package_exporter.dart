@@ -55,12 +55,152 @@ class PendingAnkiNote {
       };
 }
 
+/// A note type an [AnkiPackageExporter] can write notes as.
+class AnkiNoteType {
+  /// Define a note type with a single card template.
+  const AnkiNoteType({
+    required this.id,
+    required this.name,
+    required this.fields,
+    required this.templateName,
+    required this.frontTemplate,
+    required this.backTemplate,
+    required this.css,
+    required this.requirements,
+    this.modifiedSeconds,
+  });
+
+  /// Note type id. Anki imports notes into an existing note type with the
+  /// same id and fields instead of creating a copy.
+  final int id;
+
+  /// Note type name.
+  final String name;
+
+  /// Field names, in order.
+  final List<String> fields;
+
+  /// Name of the card template.
+  final String templateName;
+
+  /// Front of the card template.
+  final String frontTemplate;
+
+  /// Back of the card template.
+  final String backTemplate;
+
+  /// Styling of the note type.
+  final String css;
+
+  /// Anki's `req`: the fields the card template needs to be generated.
+  final List<dynamic> requirements;
+
+  /// Fixed modification time in seconds, or null for the export time. Anki
+  /// only replaces an existing note type's templates and styling with a
+  /// newer one.
+  final int? modifiedSeconds;
+
+  /// The note type the Android build creates through the AnkiDroid API.
+  static final AnkiNoteType standard = AnkiNoteType(
+    id: AnkiPackageExporter.standardModelId,
+    name: AnkiMapping.standardModelName,
+    fields: AnkiPackageExporter.standardFields,
+    templateName: AnkiMapping.standardModelName,
+    frontTemplate: AnkiPackageExporter.standardFrontTemplate,
+    backTemplate: AnkiPackageExporter.standardBackTemplate,
+    css: AnkiPackageExporter.standardCss,
+    requirements: [
+      [
+        0,
+        'all',
+        [0]
+      ]
+    ],
+  );
+
+  /// Migaku's "Migaku Japanese Targeted Sentence" note type, with the id and
+  /// fields of the note type Migaku installs in Anki, so exported notes join
+  /// the cards made with Migaku. See [MigakuNoteFormatter].
+  ///
+  /// The note type is dated to 1970 so Anki keeps Migaku's own templates
+  /// and styling. The simple templates here only show where Migaku's note
+  /// type is not installed.
+  static const AnkiNoteType migakuJapaneseTargetedSentence = AnkiNoteType(
+    id: 1687936123297,
+    name: 'Migaku Japanese Targeted Sentence',
+    fields: MigakuNoteFormatter.fields,
+    templateName: 'Standard',
+    frontTemplate: _migakuFrontTemplate,
+    backTemplate: _migakuBackTemplate,
+    css: _migakuCss,
+    requirements: [
+      [
+        0,
+        'any',
+        [0, 2]
+      ]
+    ],
+    modifiedSeconds: 1,
+  );
+
+  /// Renders Migaku's inline furigana, `食[た;k2]べる`, as ruby text.
+  static const String _migakuFrontTemplate = '''
+<div class="sentence">{{Sentence}}</div>
+<script>
+document.querySelectorAll('.sentence').forEach(function (element) {
+  element.innerHTML = element.innerHTML
+    .replace(/\\{([^}]*)\\}/g, '\$1')
+    .replace(/([^ <>\\[\\]]+)\\[([^\\];]*)(;[^\\]]*)?\\]/g, function (match, base, reading) {
+      return reading ? '<ruby>' + base + '<rt>' + reading + '</rt></ruby>' : base;
+    })
+    .replace(/ /g, '');
+});
+</script>''';
+
+  static const String _migakuBackTemplate = '''
+{{FrontSide}}
+{{Sentence Audio}}
+<hr>
+<div class="translation">{{Translation}}</div>
+<div class="screenshot">{{Screenshot}}</div>
+<div class="definitions">{{Definitions}}</div>
+{{Word Audio}}''';
+
+  static const String _migakuCss = '''
+.card {
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-size: 20px;
+  text-align: center;
+}
+
+.sentence {
+  font-size: 26px;
+}
+
+.sentence strong {
+  color: #2880ff;
+}
+
+.translation {
+  color: #666666;
+}
+
+.screenshot img {
+  max-width: 100%;
+  max-height: 365px;
+}
+
+.definitions {
+  text-align: left;
+}''';
+}
+
 /// Exports cards as an Anki package (.apkg) for import into desktop Anki.
 ///
 /// Used where AnkiDroid's content provider does not exist (iOS). Notes and
 /// their media are queued on disk under [rootDirectory]; [buildPackage]
-/// writes the queue as an .apkg containing the standard note type, decks,
-/// notes, cards and media.
+/// writes the queue as an .apkg containing an [AnkiNoteType], decks, notes,
+/// cards and media.
 class AnkiPackageExporter {
   /// Create an exporter persisting its queue in [rootDirectory].
   AnkiPackageExporter(this.rootDirectory) {
@@ -146,7 +286,8 @@ class AnkiPackageExporter {
   List<String> get decks {
     Set<String> names = {'Default'};
     if (_decksFile.existsSync()) {
-      names.addAll(List<String>.from(jsonDecode(_decksFile.readAsStringSync())));
+      names
+          .addAll(List<String>.from(jsonDecode(_decksFile.readAsStringSync())));
     }
     names.addAll(pendingNotes.map((note) => note.deck));
     return names.toList()..sort();
@@ -205,25 +346,40 @@ class AnkiPackageExporter {
   bool hasDuplicate(String key) {
     String stripped = stripHtmlMedia(key);
     return _exportedKeys.contains(stripped) ||
-        pendingNotes.any((note) => stripHtmlMedia(note.fields.first) == stripped);
+        pendingNotes
+            .any((note) => stripHtmlMedia(note.fields.first) == stripped);
   }
 
-  /// Write the queue as an .apkg in [outputDirectory] and return it.
-  Future<File> buildPackage(Directory outputDirectory) async {
+  /// Write the queue as an .apkg of [noteType], by default
+  /// [AnkiNoteType.standard], in [outputDirectory] and return it.
+  /// [noteFields] gives each queued note's fields for [noteType], in queue
+  /// order; by default the queued fields are used.
+  Future<File> buildPackage(
+    Directory outputDirectory, {
+    AnkiNoteType? noteType,
+    List<List<String>>? noteFields,
+  }) async {
     List<PendingAnkiNote> notes = pendingNotes;
     if (notes.isEmpty) {
       throw StateError('No notes queued for export');
     }
+    noteType ??= AnkiNoteType.standard;
+    noteFields ??= notes.map((note) => note.fields).toList();
 
     File databaseFile = File(path.join(rootDirectory.path, 'collection.anki2'));
     if (databaseFile.existsSync()) {
       databaseFile.deleteSync();
     }
-    await _writeCollection(databasePath: databaseFile.path, notes: notes);
+    await _writeCollection(
+      databasePath: databaseFile.path,
+      notes: notes,
+      noteType: noteType,
+      noteFields: noteFields,
+    );
 
     Archive archive = Archive()
-      ..addFile(
-          ArchiveFile.bytes('collection.anki2', databaseFile.readAsBytesSync()));
+      ..addFile(ArchiveFile.bytes(
+          'collection.anki2', databaseFile.readAsBytesSync()));
     databaseFile.deleteSync();
 
     /// Anki packages store media as numbered files plus a JSON map from
@@ -236,16 +392,16 @@ class AnkiPackageExporter {
         mediaMap[number] = path.basename(entity.path);
       }
     }
-    archive.addFile(
-        ArchiveFile.bytes('media', utf8.encode(jsonEncode(mediaMap))));
+    archive
+        .addFile(ArchiveFile.bytes('media', utf8.encode(jsonEncode(mediaMap))));
 
     String timestamp = DateTime.now()
         .toIso8601String()
         .split('.')
         .first
         .replaceAll(RegExp('[-:]'), '');
-    File packageFile = File(
-        path.join(outputDirectory.path, 'jidoujisho-$timestamp.apkg'));
+    File packageFile =
+        File(path.join(outputDirectory.path, 'jidoujisho-$timestamp.apkg'));
     packageFile.writeAsBytesSync(ZipEncoder().encodeBytes(archive));
 
     return packageFile;
@@ -268,13 +424,17 @@ class AnkiPackageExporter {
   Future<void> _writeCollection({
     required String databasePath,
     required List<PendingAnkiNote> notes,
+    required AnkiNoteType noteType,
+    required List<List<String>> noteFields,
   }) async {
     int nowMs = DateTime.now().millisecondsSinceEpoch;
     int nowSeconds = nowMs ~/ 1000;
 
+    /// Anki's Default deck always has id 1; giving it another id makes Anki
+    /// import it as a second deck, "Default_".
     Map<String, int> deckIds = {
       for (String deck in notes.map((note) => note.deck).toSet())
-        deck: deckIdForName(deck),
+        deck: deck == 'Default' ? 1 : deckIdForName(deck),
     };
 
     Database database = await openDatabase(databasePath);
@@ -297,7 +457,8 @@ class AnkiPackageExporter {
           'ls': 0,
           'conf': jsonEncode(_collectionConfig),
           'models': jsonEncode({
-            '$standardModelId': _standardModel(
+            '${noteType.id}': _model(
+              noteType: noteType,
               deckId: deckIds.values.first,
               modifiedSeconds: nowSeconds,
             ),
@@ -320,20 +481,22 @@ class AnkiPackageExporter {
         int nextId = nowMs;
         for (int position = 0; position < notes.length; position++) {
           PendingAnkiNote note = notes[position];
+          List<String> fields = noteFields[position];
           int noteId = max(nextId++, note.createdMs);
           nextId = noteId + 1;
-          String sortField = stripHtmlMedia(note.fields.first);
+          String sortField = stripHtmlMedia(fields.first);
 
           await txn.insert('notes', {
             'id': noteId,
             'guid': note.guid,
-            'mid': standardModelId,
+            'mid': noteType.id,
             'mod': nowSeconds,
             'usn': -1,
-            'tags': ' ${note.tags.map((tag) => tag.replaceAll(' ', '_')).join(' ')} ',
-            'flds': note.fields.join('\x1f'),
+            'tags':
+                ' ${note.tags.map((tag) => tag.replaceAll(' ', '_')).join(' ')} ',
+            'flds': fields.join('\x1f'),
             'sfld': sortField,
-            'csum': fieldChecksum(note.fields.first),
+            'csum': fieldChecksum(fields.first),
             'flags': 0,
             'data': '',
           });
@@ -373,6 +536,7 @@ class AnkiPackageExporter {
     for (int i = 0; i < 6; i++) {
       id = (id << 8) | digest[i];
     }
+
     /// Keep clear of the reserved default deck id 1.
     return id + 2;
   }
@@ -423,33 +587,34 @@ class AnkiPackageExporter {
     return buffer.toString().split('').reversed.join();
   }
 
-  static Map<String, dynamic> _standardModel({
+  static Map<String, dynamic> _model({
+    required AnkiNoteType noteType,
     required int deckId,
     required int modifiedSeconds,
   }) {
     return {
-      'id': '$standardModelId',
-      'name': AnkiMapping.standardModelName,
+      'id': '${noteType.id}',
+      'name': noteType.name,
       'type': 0,
-      'mod': modifiedSeconds,
+      'mod': noteType.modifiedSeconds ?? modifiedSeconds,
       'usn': -1,
       'sortf': 0,
       'did': deckId,
       'tmpls': [
         {
-          'name': AnkiMapping.standardModelName,
+          'name': noteType.templateName,
           'ord': 0,
-          'qfmt': standardFrontTemplate,
-          'afmt': standardBackTemplate,
+          'qfmt': noteType.frontTemplate,
+          'afmt': noteType.backTemplate,
           'bqfmt': '',
           'bafmt': '',
           'did': null,
         },
       ],
       'flds': [
-        for (int i = 0; i < standardFields.length; i++)
+        for (int i = 0; i < noteType.fields.length; i++)
           {
-            'name': standardFields[i],
+            'name': noteType.fields[i],
             'ord': i,
             'sticky': false,
             'rtl': false,
@@ -458,7 +623,7 @@ class AnkiPackageExporter {
             'media': [],
           },
       ],
-      'css': standardCss,
+      'css': noteType.css,
       'latexPre': r'\documentclass[12pt]{article}'
           '\n'
           r'\special{papersize=3in,5in}'
@@ -477,14 +642,7 @@ class AnkiPackageExporter {
       'latexsvg': false,
       'tags': [],
       'vers': [],
-      /// The front template renders when Term is non-empty.
-      'req': [
-        [
-          0,
-          'all',
-          [0]
-        ]
-      ],
+      'req': noteType.requirements,
     };
   }
 

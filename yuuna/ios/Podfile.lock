@@ -18,7 +18,6 @@ PODS:
     - UniversalDetector2 (= 2.0.1)
   - flutter_exit_app (1.1.2):
     - Flutter
-  - flutter_gpt_tokenizer (0.1.1)
   - flutter_inappwebview (0.0.1):
     - Flutter
     - flutter_inappwebview/Core (= 0.0.1)
@@ -29,6 +28,8 @@ PODS:
   - flutter_logs (0.0.1):
     - Flutter
     - ZIPFoundation
+  - flutter_secure_storage (6.0.0):
+    - Flutter
   - flutter_vlc_player (3.0.3):
     - Flutter
     - MobileVLCKit (~> 3.5.1)
@@ -67,9 +68,9 @@ DEPENDENCIES:
   - flutter_archive (from `.symlinks/plugins/flutter_archive/ios`)
   - flutter_charset_detector_ios (from `.symlinks/plugins/flutter_charset_detector_ios/ios`)
   - flutter_exit_app (from `.symlinks/plugins/flutter_exit_app/ios`)
-  - flutter_gpt_tokenizer (from `.symlinks/plugins/flutter_gpt_tokenizer/ios`)
   - flutter_inappwebview (from `.symlinks/plugins/flutter_inappwebview/ios`)
   - flutter_logs (from `.symlinks/plugins/flutter_logs/ios`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - flutter_vlc_player (from `.symlinks/plugins/flutter_vlc_player/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - isar_flutter_libs (from `.symlinks/plugins/isar_flutter_libs/ios`)
@@ -108,12 +109,12 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_charset_detector_ios/ios"
   flutter_exit_app:
     :path: ".symlinks/plugins/flutter_exit_app/ios"
-  flutter_gpt_tokenizer:
-    :path: ".symlinks/plugins/flutter_gpt_tokenizer/ios"
   flutter_inappwebview:
     :path: ".symlinks/plugins/flutter_inappwebview/ios"
   flutter_logs:
     :path: ".symlinks/plugins/flutter_logs/ios"
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
   flutter_vlc_player:
     :path: ".symlinks/plugins/flutter_vlc_player/ios"
   image_picker_ios:
@@ -147,9 +148,9 @@ SPEC CHECKSUMS:
   flutter_archive: 6eb3c5273c448b55cd5e87421cc72976de255322
   flutter_charset_detector_ios: 44497a50ef93045686b1900df36a1556c8d8fe54
   flutter_exit_app: b898717df98947dab2f53c4ad8fb78a0c210128c
-  flutter_gpt_tokenizer: 0d9e224c1ff3bc0ae48f802fc87258c08057350c
   flutter_inappwebview: 3fe3b3c8a12b23c9bc2ee37f7ae654b9f66375c1
   flutter_logs: 30a36079651dcdfb260dbff875bf882bbbcaa22e
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   flutter_vlc_player: 9f4c6ba897a7193afeb58a8ebf03f6e740c9fc7c
   image_picker_ios: afb77645f1e1060a27edb6793996ff9b42256909
   isar_flutter_libs: 9fc2cfb928c539e1b76c481ba5d143d556d94920

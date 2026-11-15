@@ -333,13 +333,72 @@ class BaseSourcePageState<T extends BaseSourcePage> extends BasePageState<T> {
         padding: Spacing.of(context).insets.all.semiSmall,
         margin: Spacing.of(context).insets.all.normal,
         color: color.withOpacity(dictionaryBackgroundOpacity),
-        child: Stack(
+        child: Column(
           children: [
-            buildSearchResult(),
-            buildDictionaryLoading(),
+            if (offersSentenceAssistant) buildSentenceAssistantBar(),
+            Expanded(
+              child: Stack(
+                children: [
+                  buildSearchResult(),
+                  buildDictionaryLoading(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Whether the dictionary pop-up offers to translate or break down the
+  /// sentence of the lookup with [SentenceAssistant].
+  bool get offersSentenceAssistant => false;
+
+  /// The sentence of the current lookup, for [SentenceAssistant].
+  String get assistantSentence =>
+      appModel.currentMediaSource?.currentSentence.text ?? '';
+
+  /// Text around [assistantSentence], given to [SentenceAssistant] for
+  /// context.
+  String? get assistantSentenceContext => null;
+
+  /// Translate or break down [assistantSentence] in a dialog.
+  Future<void> openSentenceAssistant(SentenceAssistantTask task) async {
+    String sentence = assistantSentence.trim();
+    if (sentence.isEmpty) {
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (context) => SentenceAssistantDialogPage(
+        task: task,
+        sentence: sentence,
+        sentenceContext: assistantSentenceContext,
+      ),
+    );
+  }
+
+  /// Buttons above the dictionary result that translate or break down the
+  /// sentence of the lookup, like Migaku.
+  Widget buildSentenceAssistantBar() {
+    Color iconColor = Theme.of(context).colorScheme.primary;
+
+    return Row(
+      children: [
+        TextButton.icon(
+          icon: Icon(Icons.translate, color: iconColor, size: 18),
+          label: Text(t.sentence_translate),
+          onPressed: () =>
+              openSentenceAssistant(SentenceAssistantTask.translate),
+        ),
+        TextButton.icon(
+          icon: Icon(Icons.auto_awesome, color: iconColor, size: 18),
+          label: Text(t.sentence_break_down),
+          onPressed: () =>
+              openSentenceAssistant(SentenceAssistantTask.breakDown),
+        ),
+      ],
     );
   }
 

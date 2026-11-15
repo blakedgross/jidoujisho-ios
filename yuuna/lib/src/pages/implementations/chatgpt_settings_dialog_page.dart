@@ -15,6 +15,7 @@ class ChatgptSettingsDialogPage extends BasePage {
 
 class _ChatgptSettingsDialogPageState extends BasePageState {
   late TextEditingController _apiKeyController;
+  late TextEditingController _modelController;
 
   @override
   void initState() {
@@ -22,6 +23,15 @@ class _ChatgptSettingsDialogPageState extends BasePageState {
 
     _apiKeyController =
         TextEditingController(text: ReaderChatgptSource.instance.apiKey ?? '');
+    _modelController =
+        TextEditingController(text: ReaderChatgptSource.instance.model);
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    _modelController.dispose();
+    super.dispose();
   }
 
   @override
@@ -70,6 +80,10 @@ class _ChatgptSettingsDialogPageState extends BasePageState {
             mainAxisSize: MainAxisSize.min,
             children: [
               buildApiKeyField(),
+              const Space.normal(),
+              buildModelField(),
+              const Space.normal(),
+              buildReasoningEffortDropdown(),
             ],
           ),
         ),
@@ -83,10 +97,68 @@ class _ChatgptSettingsDialogPageState extends BasePageState {
         ReaderChatgptSource.instance.setApiKey(value.trim());
       },
       controller: _apiKeyController,
+      obscureText: true,
+      autocorrect: false,
+      enableSuggestions: false,
       decoration: InputDecoration(
         floatingLabelBehavior: FloatingLabelBehavior.always,
         labelText: t.api_key,
       ),
+    );
+  }
+
+  Widget buildModelField() {
+    return TextField(
+      onChanged: (value) {
+        ReaderChatgptSource.instance.setModel(value.trim());
+      },
+      controller: _modelController,
+      autocorrect: false,
+      decoration: InputDecoration(
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        labelText: t.openai_model,
+        hintText: ReaderChatgptSource.defaultModel,
+      ),
+    );
+  }
+
+  /// Reasoning efforts to pick from. The empty string leaves the effort to
+  /// the model, for models without reasoning.
+  static const List<String> reasoningEfforts = [
+    '',
+    'none',
+    'low',
+    'medium',
+    'high',
+  ];
+
+  Widget buildReasoningEffortDropdown() {
+    String effort = ReaderChatgptSource.instance.reasoningEffort;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: Spacing.of(context).insets.onlyLeft.small,
+          child: Text(
+            t.openai_reasoning_effort,
+            style: TextStyle(
+              fontSize: 10,
+              color: theme.unselectedWidgetColor,
+            ),
+          ),
+        ),
+        JidoujishoDropdown<String>(
+          options: reasoningEfforts,
+          initialOption: reasoningEfforts.contains(effort) ? effort : 'low',
+          generateLabel: (effort) => effort.isEmpty
+              ? t.openai_reasoning_model_default
+              : effort[0].toUpperCase() + effort.substring(1),
+          onChanged: (effort) {
+            ReaderChatgptSource.instance.setReasoningEffort(effort!);
+          },
+        ),
+      ],
     );
   }
 }

@@ -289,6 +289,7 @@ class _ReaderTtuSourcePageState extends BaseSourcePageState<ReaderTtuSourcePage>
           action: PermissionResponseAction.GRANT,
         );
       },
+
       /// WKWebView never grants navigator.storage.persist(), so ッツ warns
       /// that books and bookmarks may be evicted. The WebView's storage lives
       /// in the app container and is not subject to browser eviction, so
@@ -459,6 +460,15 @@ if (localStorage.getItem('autoBookmark') === null) {
     );
   }
 
+  /// Paragraph of the last lookup.
+  String _lookupParagraph = '';
+
+  @override
+  bool get offersSentenceAssistant => true;
+
+  @override
+  String? get assistantSentenceContext => _lookupParagraph;
+
   void onConsoleMessage(
     InAppWebViewController controller,
     ConsoleMessage message,
@@ -523,6 +533,8 @@ if (localStorage.getItem('autoBookmark') === null) {
           mediaSource.clearCurrentSentence();
           return;
         }
+
+        _lookupParagraph = text;
 
         try {
           /// If we cut off at a lone surrogate, offset the index back by 1. The

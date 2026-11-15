@@ -2,6 +2,7 @@ export 'src/creator/creator_field_values.dart';
 export 'src/creator/creator_generator_mixins.dart';
 export 'src/creator/anki_mapping.dart';
 export 'src/creator/anki_package_exporter.dart';
+export 'src/creator/migaku_note_formatter.dart';
 export 'src/creator/enhancement.dart';
 export 'src/creator/field.dart';
 export 'src/creator/audio_enhancement.dart';

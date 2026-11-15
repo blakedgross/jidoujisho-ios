@@ -1,9 +1,9 @@
 /// Generated file. Do not edit.
 ///
 /// Locales: 1
-/// Strings: 403
+/// Strings: 413
 ///
-/// Built on 2026-11-15 at 14:31 UTC
+/// Built on 2026-11-15 at 17:26 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -336,6 +336,7 @@ class _StringsEn implements BaseTranslations<AppLocale, _StringsEn> {
 	String card_queued_for_anki_package({required Object deck, required Object count}) => 'Card queued for 『${deck}』 (${count} waiting for export).';
 	String get anki_package_empty => 'No cards are waiting to be exported.';
 	String anki_package_exported({required Object count}) => 'Exported ${count} cards. Open the file with Anki on your computer to import them.';
+	String anki_package_translating({required Object count}) => 'Translating ${count} sentences for Anki…';
 	String get anki_package_new_deck => 'New deck';
 	String get anki_package_deck_name => 'Deck name';
 	String get info_incognito_on => 'Incognito mode on. Dictionary, media and search history will not be tracked.';
@@ -505,6 +506,15 @@ class _StringsEn implements BaseTranslations<AppLocale, _StringsEn> {
 	String get missing_api_key => 'API key not provided';
 	String get chatgpt_error => 'There was an error in getting a response from ChatGPT.';
 	String get api_key => 'API Key';
+	String get openai_model => 'Model';
+	String get openai_reasoning_effort => 'Reasoning effort';
+	String get openai_reasoning_model_default => 'Model default';
+	String get sentence_translate => 'Translate';
+	String get sentence_break_down => 'Break down';
+	String get dialog_copy => 'COPY';
+	String get openai_missing_api_key => 'Add an OpenAI API key in the settings of the ChatGPT source.';
+	String openai_unreachable({required Object error}) => 'Could not reach OpenAI: ${error}';
+	String openai_failed({required Object status, required Object message}) => 'OpenAI returned an error (${status}): ${message}';
 	String subtitle_delay_set({required Object ms}) => 'Subtitle delay set to ${ms} ms.';
 	String get cancel => 'Cancel';
 	String get server_port_in_use => 'Local server port already in use';
@@ -771,6 +781,7 @@ extension on _StringsEn {
 			case 'card_queued_for_anki_package': return ({required Object deck, required Object count}) => 'Card queued for 『${deck}』 (${count} waiting for export).';
 			case 'anki_package_empty': return 'No cards are waiting to be exported.';
 			case 'anki_package_exported': return ({required Object count}) => 'Exported ${count} cards. Open the file with Anki on your computer to import them.';
+			case 'anki_package_translating': return ({required Object count}) => 'Translating ${count} sentences for Anki…';
 			case 'anki_package_new_deck': return 'New deck';
 			case 'anki_package_deck_name': return 'Deck name';
 			case 'info_incognito_on': return 'Incognito mode on. Dictionary, media and search history will not be tracked.';
@@ -940,6 +951,15 @@ extension on _StringsEn {
 			case 'missing_api_key': return 'API key not provided';
 			case 'chatgpt_error': return 'There was an error in getting a response from ChatGPT.';
 			case 'api_key': return 'API Key';
+			case 'openai_model': return 'Model';
+			case 'openai_reasoning_effort': return 'Reasoning effort';
+			case 'openai_reasoning_model_default': return 'Model default';
+			case 'sentence_translate': return 'Translate';
+			case 'sentence_break_down': return 'Break down';
+			case 'dialog_copy': return 'COPY';
+			case 'openai_missing_api_key': return 'Add an OpenAI API key in the settings of the ChatGPT source.';
+			case 'openai_unreachable': return ({required Object error}) => 'Could not reach OpenAI: ${error}';
+			case 'openai_failed': return ({required Object status, required Object message}) => 'OpenAI returned an error (${status}): ${message}';
 			case 'subtitle_delay_set': return ({required Object ms}) => 'Subtitle delay set to ${ms} ms.';
 			case 'cancel': return 'Cancel';
 			case 'server_port_in_use': return 'Local server port already in use';

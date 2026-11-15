@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_floating_search_bar/material_floating_search_bar.dart';
 import 'package:yuuna/media.dart';
@@ -28,18 +29,79 @@ class ReaderChatgptSource extends ReaderMediaSource {
   static final ReaderChatgptSource _instance =
       ReaderChatgptSource._privateConstructor();
 
-  /// Used to get the API key.
-  String? get apiKey {
-    return getPreference<String?>(key: 'openai_api_key', defaultValue: null);
+  /// Keeps the API key in the iOS Keychain or Android's encrypted
+  /// preferences rather than in plain app preferences. The key is kept to
+  /// this device and left out of backups.
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
+  static const String _apiKeyKey = 'openai_api_key';
+
+  String? _apiKey;
+
+  /// Loads the API key, moving a key that earlier versions kept in plain
+  /// preferences to secure storage.
+  @override
+  Future<void> prepareResources() async {
+    String? plainKey =
+        getPreference<String?>(key: _apiKeyKey, defaultValue: null);
+    if (plainKey != null) {
+      await setApiKey(plainKey);
+      await deletePreference(key: _apiKeyKey);
+      return;
+    }
+
+    try {
+      _apiKey = await _secureStorage.read(key: _apiKeyKey);
+    } catch (e) {
+      debugPrint('Could not read the OpenAI API key: $e');
+    }
   }
 
-  /// Used to persist the API key.
+  /// The OpenAI API key, or null if none is set.
+  String? get apiKey => _apiKey;
+
+  /// Save the OpenAI API key, or remove it if [value] is empty.
   Future<void> setApiKey(String? value) async {
-    await setPreference(key: 'openai_api_key', value: value);
+    _apiKey = (value == null || value.isEmpty) ? null : value;
+    if (_apiKey == null) {
+      await _secureStorage.delete(key: _apiKeyKey);
+    } else {
+      await _secureStorage.write(key: _apiKeyKey, value: _apiKey);
+    }
   }
 
-  /// Access token used for sending messages.
-  String? messageAccessToken;
+  /// The model used when none is set.
+  static const String defaultModel = 'gpt-6-luna';
+
+  /// The model used for the ChatGPT source and for translating and breaking
+  /// down sentences.
+  String get model {
+    String model =
+        getPreference<String>(key: 'openai_model', defaultValue: defaultModel);
+    return model.isEmpty ? defaultModel : model;
+  }
+
+  /// Used to persist the model.
+  Future<void> setModel(String value) async {
+    await setPreference(key: 'openai_model', value: value);
+  }
+
+  /// Reasoning effort requested from [model], or an empty string to leave it
+  /// to the model, for models without reasoning.
+  String get reasoningEffort {
+    return getPreference<String>(
+        key: 'openai_reasoning_effort', defaultValue: 'low');
+  }
+
+  /// Used to persist the reasoning effort.
+  Future<void> setReasoningEffort(String value) async {
+    await setPreference(key: 'openai_reasoning_effort', value: value);
+  }
 
   @override
   Future<void> onSearchBarTap({

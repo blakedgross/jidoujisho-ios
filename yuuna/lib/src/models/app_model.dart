@@ -563,7 +563,6 @@ class AppModel with ChangeNotifier {
         error: red,
         onError: label,
         surface: background,
-        onSurface: label,
         onSurfaceVariant: secondaryLabel,
         surfaceContainerLowest: background,
         surfaceContainerLow: surface,
@@ -1208,7 +1207,9 @@ class AppModel with ChangeNotifier {
 
     String? rebase(String? value) => value?.replaceAll(containerRoot, root);
     bool isStale(String? value) =>
-        value != null && value.contains(containerRoot) && rebase(value) != value;
+        value != null &&
+        value.contains(containerRoot) &&
+        rebase(value) != value;
 
     for (dynamic key in _preferences.keys.toList()) {
       dynamic value = _preferences.get(key);
@@ -2449,6 +2450,51 @@ class AppModel with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Fields of queued Japanese notes in Migaku's format, see
+  /// [MigakuNoteFormatter]. With an OpenAI API key set, sentences are
+  /// translated to fill Migaku's Translation field; a sentence that fails to
+  /// translate is left without one.
+  Future<List<List<String>>> getMigakuNoteFields(
+    List<PendingAnkiNote> notes,
+  ) async {
+    bool canTranslate = ReaderChatgptSource.instance.apiKey != null;
+    if (canTranslate) {
+      Fluttertoast.showToast(
+        msg: t.anki_package_translating(count: notes.length),
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+      );
+    }
+
+    Future<String> translate(PendingAnkiNote note) async {
+      String sentence = MigakuNoteFormatter.plainSentence(note.fields);
+      if (!canTranslate || sentence.isEmpty) {
+        return '';
+      }
+      try {
+        return await SentenceAssistant.run(
+          task: SentenceAssistantTask.translate,
+          sentence: sentence,
+          language: targetLanguage,
+        ).last;
+      } catch (e) {
+        debugPrint('Could not translate "$sentence": $e');
+        return '';
+      }
+    }
+
+    List<String> translations = await Future.wait(notes.map(translate));
+
+    return [
+      for (int i = 0; i < notes.length; i++)
+        MigakuNoteFormatter.format(
+          standardFields: notes[i].fields,
+          mecab: JapaneseLanguage.mecab,
+          translation: translations[i],
+        ),
+    ];
+  }
+
   /// Write queued cards to an Anki package in the Documents folder (visible
   /// in the Files app) and open the share sheet so it can be sent to a
   /// computer. The queue is cleared once the package is handed off.
@@ -2467,7 +2513,17 @@ class AppModel with ChangeNotifier {
     Directory outputDirectory =
         Directory(path.join(sharedDocumentsDirectory.path, 'Anki Exports'));
     outputDirectory.createSync(recursive: true);
-    File packageFile = await exporter.buildPackage(outputDirectory);
+
+    File packageFile;
+    if (targetLanguage is JapaneseLanguage) {
+      packageFile = await exporter.buildPackage(
+        outputDirectory,
+        noteType: AnkiNoteType.migakuJapaneseTargetedSentence,
+        noteFields: await getMigakuNoteFields(exporter.pendingNotes),
+      );
+    } else {
+      packageFile = await exporter.buildPackage(outputDirectory);
+    }
 
     /// The share sheet is a popover on regular-width windows (iPhone Duo
     /// unfolded, iPad) and needs an anchor.

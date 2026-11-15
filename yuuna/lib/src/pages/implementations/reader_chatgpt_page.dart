@@ -1,14 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 
-import 'package:chat_gpt_sdk/chat_gpt_sdk.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_gpt_tokenizer/flutter_gpt_tokenizer.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:progress_indicators/progress_indicators.dart';
 import 'package:remove_emoji/remove_emoji.dart';
 import 'package:spaces/spaces.dart';
@@ -43,7 +39,8 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
   Orientation? _lastOrientation;
   bool _isLoading = false;
 
-  late OpenAI _openAI;
+  /// Why the last message failed to send, or null.
+  String? _error;
 
   final ValueNotifier<String> _progressNotifier = ValueNotifier<String>('');
 
@@ -78,14 +75,6 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
     if (source.apiKey == null || source.apiKey!.trim().isEmpty) {
       return buildNoApiKey();
     } else {
-      _openAI = OpenAI.instance.build(
-        token: source.apiKey,
-        baseOption: HttpSetup(
-          receiveTimeout: const Duration(seconds: 5),
-        ),
-        enableLog: true,
-      );
-
       return Column(
         children: [
           Expanded(
@@ -109,6 +98,7 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
               ],
             ),
           ),
+          if (_error != null) buildSendError(),
           buildTextField(),
           SizedBox(height: getBottomInsets() * 0.85)
         ],
@@ -132,6 +122,17 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
           MediaQuery.of(context).viewPadding.bottom;
     }
     return 0;
+  }
+
+  /// Why the last message failed, shown above the text field.
+  Widget buildSendError() {
+    return Padding(
+      padding: Spacing.of(context).insets.horizontal.normal,
+      child: SelectableText(
+        _error!,
+        style: textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+      ),
+    );
   }
 
   Widget buildTextField() {
@@ -189,23 +190,10 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
     }
   }
 
-  Future<List<Map<String, String>>> getMessages() async {
-    List<MessageItem> messageItems =
-        appModel.messages.sublist(max(0, appModel.messages.length - 20));
-
-    while (messageItems.isNotEmpty &&
-        4096 <
-            await Tokenizer().count(
-                jsonEncode(getMessagesFromList(messageItems)),
-                modelName: 'gpt-3.5-turbo')) {
-      messageItems.removeAt(0);
-    }
-
-    return getMessagesFromList(messageItems);
-  }
-
-  List<Map<String, String>> getMessagesFromList(List<MessageItem> items) {
-    return items
+  /// The conversation sent with a new message: the last 20 messages.
+  List<Map<String, String>> getMessages() {
+    return appModel.messages
+        .sublist(max(0, appModel.messages.length - 20))
         .map((item) => {
               'role': item.isBot ? 'assistant' : 'user',
               'content': item.message,
@@ -225,6 +213,7 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
 
     setState(() {
       _isLoading = true;
+      _error = null;
     });
 
     _controller.clear();
@@ -244,54 +233,20 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
 
     Future.delayed(const Duration(milliseconds: 100), scrollToBottom);
 
-    int? responseIndex;
-
-    final chatComplete = _openAI.onChatCompletionSSE(
-      request: ChatCompleteText(
-        model: ChatModel.gptTurbo0301,
-        messages: await getMessages(),
-        maxToken: 1500,
-      ),
-    );
-
-    _streamSubscription = chatComplete.listen(
-      (data) {
-        if (responseIndex != data.choices.lastOrNull?.index) {
-          responseIndex = data.choices.lastOrNull?.index;
-          _buffer.clear();
-        }
-
-        _buffer.write(data.choices.lastOrNull?.message?.content);
-        _progressNotifier.value = _buffer.toString();
+    _streamSubscription = OpenAiChat.complete(messages: getMessages()).listen(
+      (answer) {
+        _buffer
+          ..clear()
+          ..write(answer);
+        _progressNotifier.value = answer;
 
         _scrollController.animateTo(_scrollController.position.minScrollExtent,
             duration: const Duration(milliseconds: 100), curve: Curves.linear);
-
-        String memory = _buffer.toString().trim();
-        Future.delayed(const Duration(seconds: 10), () {
-          if (memory.isNotEmpty &&
-              _buffer.toString().trim() == memory &&
-              _isLoading) {
-            appModel.removeMessage(userMessageId);
-            _streamSubscription?.cancel();
-            _streamSubscription = null;
-
-            Fluttertoast.showToast(msg: t.error_chatgpt_response);
-
-            setState(() {
-              _isLoading = false;
-            });
-
-            _controller.text = input;
-          }
-        });
       },
-      onError: (error, stack) {
+      onError: (error) {
+        _streamSubscription = null;
         appModel.removeMessage(userMessageId);
-        debugPrint('$error');
-        debugPrint('$stack');
-
-        Fluttertoast.showToast(msg: t.error_chatgpt_response);
+        _error = error.toString();
 
         setState(() {
           _isLoading = false;
@@ -299,7 +254,11 @@ class _ReaderChatgptPageState extends BaseSourcePageState<ReaderChatgptPage> {
 
         _controller.text = input;
       },
-      onDone: addBotMessage,
+      onDone: () {
+        if (_isLoading) {
+          addBotMessage();
+        }
+      },
     );
   }
 
