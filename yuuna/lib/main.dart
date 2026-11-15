@@ -159,6 +159,13 @@ class _JidoujishoAppState extends ConsumerState<JidoujishoApp>
     super.dispose();
   }
 
+  /// Follows the system switching between light and dark appearance.
+  @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    setState(() {});
+  }
+
   void handleIntent({
     required intents.Intent? intent,
     required bool isInitial,

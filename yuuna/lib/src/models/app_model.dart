@@ -528,85 +528,147 @@ class AppModel with ChangeNotifier {
       );
 
   /// Shows when the current mode is a dark theme.
-  ThemeData get darkTheme => ThemeData(
-        scaffoldBackgroundColor: Colors.black,
-        textTheme: textTheme,
-        switchTheme: SwitchThemeData(
-          thumbColor: MaterialStateColor.resolveWith((states) {
-            return states.contains(MaterialState.selected)
-                ? Colors.red
-                : Colors.grey;
-          }),
-          trackColor: MaterialStateColor.resolveWith((states) {
-            return states.contains(MaterialState.selected)
-                ? Colors.red.withOpacity(0.5)
-                : Colors.grey;
-          }),
+  ///
+  /// Colours follow the dark variants of Apple's semantic system colours: a
+  /// black base, grey surfaces that lighten as they are raised (cards, then
+  /// menus and dialogs), white primary text, translucent secondary text and
+  /// the brighter dark-mode red. Material 3 derives text, icon and control
+  /// colours from the [ColorScheme], so every role is set explicitly.
+  ThemeData get darkTheme {
+    const Color red = Color(0xFFFF453A); // systemRed (dark)
+    const Color background = Colors.black; // systemBackground
+    const Color surface = Color(0xFF1C1C1E); // secondarySystemBackground
+    const Color raised = Color(0xFF2C2C2E); // tertiarySystemBackground
+    const Color raisedHigher = Color(0xFF3A3A3C); // systemGray5
+    const Color label = Colors.white; // label
+    const Color secondaryLabel = Color(0x99EBEBF5); // secondaryLabel
+    const Color separator = Color(0xFF38383A); // opaqueSeparator
+
+    return ThemeData(
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: background,
+      canvasColor: background,
+      textTheme: textTheme,
+      colorScheme: const ColorScheme.dark(
+        primary: red,
+        onPrimary: label,
+        primaryContainer: red,
+        onPrimaryContainer: label,
+        secondary: red,
+        onSecondary: label,
+        secondaryContainer: raisedHigher,
+        onSecondaryContainer: label,
+        tertiary: red,
+        onTertiary: label,
+        error: red,
+        onError: label,
+        surface: background,
+        onSurface: label,
+        onSurfaceVariant: secondaryLabel,
+        surfaceContainerLowest: background,
+        surfaceContainerLow: surface,
+        surfaceContainer: surface,
+        surfaceContainerHigh: raised,
+        surfaceContainerHighest: raisedHigher,
+        inverseSurface: label,
+        onInverseSurface: background,
+        inversePrimary: red,
+        outline: secondaryLabel,
+        outlineVariant: separator,
+        surfaceTint: Colors.transparent,
+      ),
+      iconTheme: const IconThemeData(color: label),
+      dividerColor: separator,
+      dividerTheme: const DividerThemeData(color: separator),
+      unselectedWidgetColor: secondaryLabel,
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateColor.resolveWith((states) {
+          return states.contains(WidgetState.selected) ? label : secondaryLabel;
+        }),
+        trackColor: WidgetStateColor.resolveWith((states) {
+          return states.contains(WidgetState.selected) ? red : raisedHigher;
+        }),
+        trackOutlineColor: WidgetStateColor.resolveWith((_) {
+          return Colors.transparent;
+        }),
+      ),
+      appBarTheme: const AppBarTheme(
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        backgroundColor: background,
+        foregroundColor: label,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        elevation: 0,
+        type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: textTheme.labelSmall,
+        unselectedLabelStyle: textTheme.labelSmall,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        backgroundColor: background,
+        selectedItemColor: red,
+        unselectedItemColor: secondaryLabel,
+      ),
+      popupMenuTheme: const PopupMenuThemeData(
+        color: raised,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(),
+      ),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: raised,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: raised,
+        surfaceTintColor: Colors.transparent,
+      ),
+      cardColor: surface,
+      cardTheme: const CardThemeData(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: label,
         ),
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: false,
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
+      ),
+      listTileTheme: const ListTileThemeData(
+        dense: true,
+        textColor: label,
+        iconColor: label,
+        selectedTileColor: raisedHigher,
+        selectedColor: label,
+        horizontalTitleGap: 0,
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        labelStyle: TextStyle(color: secondaryLabel),
+        hintStyle: TextStyle(color: secondaryLabel),
+        enabledBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: secondaryLabel),
         ),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: textTheme.labelSmall,
-          unselectedLabelStyle: textTheme.labelSmall,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          backgroundColor: Colors.black,
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: red),
         ),
-        popupMenuTheme: const PopupMenuThemeData(
-          color: Color.fromARGB(255, 30, 30, 30),
-          shape: RoundedRectangleBorder(),
-        ),
-        dialogTheme: const DialogThemeData(
-          backgroundColor: Color.fromARGB(255, 30, 30, 30),
-          shape: RoundedRectangleBorder(),
-        ),
-        cardColor: const Color.fromARGB(255, 30, 30, 30),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-          ),
-        ),
-        listTileTheme: ListTileThemeData(
-          dense: true,
-          selectedTileColor: Colors.grey.shade600,
-          selectedColor: Colors.white,
-          horizontalTitleGap: 0,
-        ),
-        inputDecorationTheme: const InputDecorationTheme(
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(
-              color: Colors.white70,
-            ),
-          ),
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.red),
-          ),
-        ),
-        scrollbarTheme: ScrollbarThemeData(
-          thumbVisibility: MaterialStateProperty.all(true),
-        ),
-        sliderTheme: const SliderThemeData(
-          thumbColor: Colors.red,
-          activeTrackColor: Colors.red,
-          inactiveTrackColor: Colors.grey,
-          trackShape: RectangularSliderTrackShape(),
-          trackHeight: 2,
-          thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
-        ),
-        colorScheme: ColorScheme.fromSwatch()
-            .copyWith(
-              primary: Colors.red,
-              secondary: Colors.red,
-              brightness: Brightness.dark,
-            )
-            .copyWith(background: Colors.black),
-      );
+      ),
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: red,
+        selectionHandleColor: red,
+      ),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: WidgetStateProperty.all(true),
+      ),
+      sliderTheme: const SliderThemeData(
+        thumbColor: red,
+        activeTrackColor: red,
+        inactiveTrackColor: raisedHigher,
+        trackShape: RectangularSliderTrackShape(),
+        trackHeight: 2,
+        thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6),
+      ),
+    );
+  }
 
   /// Get the sentence to be used by the [SentenceField] upon card creation.
   JidoujishoTextSelection getCurrentSentence() {
@@ -1321,18 +1383,28 @@ class AppModel with ChangeNotifier {
     });
   }
 
-  /// Get whether or not the current theme is dark mode.
+  /// Whether the system appearance is dark.
+  bool get isSystemDarkMode =>
+      WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+      Brightness.dark;
+
+  /// Get whether or not the current theme is dark mode. Follows the system
+  /// appearance unless the user picked a theme that differs from it.
   bool get isDarkMode {
-    bool isDarkMode = _preferences.get('is_dark_mode',
-        defaultValue:
-            WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-                Brightness.dark);
+    bool isDarkMode =
+        _preferences.get('is_dark_mode', defaultValue: isSystemDarkMode);
     return isDarkMode;
   }
 
-  /// Toggle between light and dark mode.
+  /// Toggle between light and dark mode. Picking the theme that matches the
+  /// system appearance goes back to following the system.
   void toggleDarkMode() async {
-    await _preferences.put('is_dark_mode', !isDarkMode);
+    bool darkMode = !isDarkMode;
+    if (darkMode == isSystemDarkMode) {
+      await _preferences.delete('is_dark_mode');
+    } else {
+      await _preferences.put('is_dark_mode', darkMode);
+    }
     if (Platform.isAndroid) {
       Restart.restartApp();
     } else {

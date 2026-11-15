@@ -246,7 +246,7 @@ class _HomeDictionaryPageState<T extends BaseTabPage> extends BaseTabPageState {
             return SearchToClear(
               isEmpty: isEmpty,
               size: textTheme.titleLarge!.fontSize!,
-              color: bar.style.iconColor,
+              color: Theme.of(context).iconTheme.color ?? bar.style.iconColor,
               duration: const Duration(milliseconds: 900) * 0.5,
               onTap: () {
                 if (!isEmpty) {
