@@ -154,7 +154,7 @@ class _ReaderTtuSourcePageState extends BaseSourcePageState<ReaderTtuSourcePage>
         child: Scaffold(
           backgroundColor: Colors.black,
           resizeToAvoidBottomInset: false,
-          body: SafeArea(
+          body: ReaderSafeArea(
             top: !mediaSource.extendPageBeyondNavigationBar,
             bottom: false,
             child: Stack(

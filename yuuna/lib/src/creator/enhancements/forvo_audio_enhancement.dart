@@ -88,7 +88,7 @@ class ForvoAudioEnhancement extends AudioEnhancement {
         int index = 0;
         ForvoResult result = results[index];
 
-        Directory appDirDoc = await getApplicationDocumentsDirectory();
+        Directory appDirDoc = await getApplicationSupportDirectory();
         String forvoAudioPath = '${appDirDoc.path}/forvoAudio';
         Directory forvoAudioDir = Directory(forvoAudioPath);
         if (forvoAudioDir.existsSync()) {
@@ -119,7 +119,7 @@ class ForvoAudioEnhancement extends AudioEnhancement {
           builder: (_) => ForvoAudioDialogPage(
             results: results,
             onSelect: (index) async {
-              Directory appDirDoc = await getApplicationDocumentsDirectory();
+              Directory appDirDoc = await getApplicationSupportDirectory();
               String forvoAudioPath = '${appDirDoc.path}/forvoAudio';
               Directory forvoAudioDir = Directory(forvoAudioPath);
               if (forvoAudioDir.existsSync()) {

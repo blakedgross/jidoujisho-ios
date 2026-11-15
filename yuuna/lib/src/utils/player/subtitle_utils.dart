@@ -120,7 +120,7 @@ class SubtitleUtils {
     required Language language,
     required Function(SubtitleItem) onItemComplete,
   }) async {
-    Directory appDocDir = await getApplicationDocumentsDirectory();
+    Directory appDocDir = await getApplicationSupportDirectory();
     Directory subsDir = Directory('${appDocDir.path}/targetSubtitles');
     if (!subsDir.existsSync()) {
       subsDir.createSync(recursive: true);
@@ -164,7 +164,7 @@ class SubtitleUtils {
     List<File> outputFiles = [];
     List<SubtitleItem> items = [];
 
-    Directory appDocDir = await getApplicationDocumentsDirectory();
+    Directory appDocDir = await getApplicationSupportDirectory();
     Directory subsDir = Directory('${appDocDir.path}/subtitles');
     if (!subsDir.existsSync()) {
       subsDir.createSync(recursive: true);
@@ -207,7 +207,7 @@ class SubtitleUtils {
 
   /// Converts ASS subtitles to SRT and returns the data.
   static Future<String> convertAssSubtitles(String inputPath) async {
-    Directory appDocDir = await getApplicationDocumentsDirectory();
+    Directory appDocDir = await getApplicationSupportDirectory();
     Directory subsDir = Directory('${appDocDir.path}/subtitles');
     if (!subsDir.existsSync()) {
       subsDir.createSync(recursive: true);

@@ -1,0 +1,254 @@
+diff --git a/apps/web/src/lib/components/book-reader/book-reader-paginated/book-reader-paginated.svelte b/apps/web/src/lib/components/book-reader/book-reader-paginated/book-reader-paginated.svelte
+index 22e9cd1..367d8b3 100644
+--- a/apps/web/src/lib/components/book-reader/book-reader-paginated/book-reader-paginated.svelte
++++ b/apps/web/src/lib/components/book-reader/book-reader-paginated/book-reader-paginated.svelte
+@@ -120,6 +120,10 @@
+ 
+   let displayedHtml = '';
+ 
++  // Left page of a vertical two-page spread: a second rendering of the
++  // section, scrolled one page ahead of scrollEl, which is the right page.
++  let mirrorEl: HTMLElement | undefined;
++
+   let skipFirstHtmlLoad = true;
+ 
+   let previousIntendedCount = 0;
+@@ -165,7 +169,19 @@
+ 
+   $: if (height) height$.next(height);
+ 
+-  $: columnCount = verticalMode ? 1 : pageColumns || Math.ceil(width / 1000);
++  // Windows wide and tall enough for two readable pages (an unfolded iPhone
++  // Duo, a tablet in landscape) show a two-page spread, like an open book.
++  $: spreadWindow = width > 0 && height > 0 && isSpreadWindow();
++
++  $: columnCount = verticalMode
++    ? Math.min(pageColumns || (spreadWindow ? 2 : 1), 2)
++    : pageColumns || Math.max(Math.ceil(width / 1000), spreadWindow ? 2 : 1);
++
++  // Vertical pages stack top to bottom in a single column, so a vertical
++  // spread renders the section twice, side by side, each pane one page wide.
++  $: verticalSpread = verticalMode && columnCount === 2;
++
++  $: pageWidth = verticalSpread ? (width - gap) / 2 : width;
+ 
+   $: {
+     if (htmlContent) {
+@@ -190,12 +206,13 @@
+         sections,
+         sectionIndex$,
+         virtualScrollPos$,
+-        width,
++        pageWidth,
+         height,
+         gap,
+         verticalMode,
+         pageChange$,
+-        sectionRenderComplete$
++        sectionRenderComplete$,
++        verticalSpread ? 2 : 1
+       );
+       pageManager = concretePageManager;
+     }
+@@ -242,6 +259,23 @@
+     destroy$.complete();
+   });
+ 
++  virtualScrollPos$.pipe(takeUntil(destroy$)).subscribe(syncMirror);
++
++  function isSpreadWindow() {
++    if (!browser) return false;
++    const { innerWidth, innerHeight } = window;
++    return innerWidth > innerHeight && Math.min(innerWidth, innerHeight) >= 600;
++  }
++
++  // Keep the left page of a vertical spread one page after the right page,
++  // and blank when the right page is the last of the section.
++  function syncMirror(scrollPos: number) {
++    if (!mirrorEl || !scrollEl) return;
++    const nextPagePos = scrollPos + height + gap;
++    mirrorEl.style.visibility = nextPagePos < scrollEl.scrollHeight ? '' : 'hidden';
++    mirrorEl.scrollTop = nextPagePos;
++  }
++
+   combineLatest([width$, height$])
+     .pipe(
+       skip(1),
+@@ -351,7 +385,7 @@
+       scrollEl,
+       sections,
+       virtualScrollPos$,
+-      () => width,
++      () => pageWidth,
+       () => height,
+       () => gap,
+       verticalMode,
+@@ -401,6 +435,7 @@
+     exploredCharCount = _calculator.calcExploredCharCount(customReadingPointRange);
+     sectionReady$.next(_calculator);
+     bookmarkData.then(updateBookmarkScreen);
++    syncMirror(virtualScrollPos$.getValue());
+ 
+     if (scrollWhenReady) {
+       scrollWhenReady = false;
+@@ -514,6 +549,11 @@
+   });
+ </script>
+ 
++<div
++  class:book-spread={verticalSpread}
++  class:contents={!verticalSpread}
++  style:width={verticalSpread ? `${width}px` : undefined}
++>
+ <div
+   bind:this={scrollEl}
+   style:color={fontColor}
+@@ -531,18 +571,18 @@
+   style:padding-right={verticalMode && firstDimensionMargin
+     ? `${firstDimensionMargin}px`
+     : undefined}
+-  style:max-width={width ? `${width}px` : undefined}
++  style:max-width={pageWidth ? `${pageWidth}px` : undefined}
+   style:max-height={verticalMode && height ? `${height}px` : undefined}
+   style:--font-family-serif={fontFamilyGroupOne}
+   style:--font-family-sans-serif={fontFamilyGroupTwo}
+   style:--book-content-hint-furigana-font-color={hintFuriganaFontColor}
+   style:--book-content-hint-furigana-shadow-color={hintFuriganaShadowColor}
+-  style:--book-content-child-width="{width}px"
++  style:--book-content-child-width="{pageWidth}px"
+   style:--book-content-child-height="{height}px"
+   style:--book-content-child-column-width={!verticalMode && columnCount === 1 ? `${width}px` : ''}
+-  style:--book-content-column-count={columnCount}
++  style:--book-content-column-count={verticalMode ? 1 : columnCount}
+   style:--book-content-image-max-width="{verticalMode
+-    ? width
++    ? pageWidth
+     : (width + gap) / columnCount - gap}px"
+   class:book-content--avoid-page-break={avoidPageBreak}
+   class:book-content--writing-vertical-rl={verticalMode}
+@@ -560,6 +600,41 @@
+     <HtmlRenderer html={displayedHtml} on:load={onHtmlLoad} />
+   </div>
+ </div>
++{#if verticalSpread}
++  <div
++    bind:this={mirrorEl}
++    aria-hidden="true"
++    style:color={fontColor}
++    style:font-size="{fontSize}px"
++    style:line-height={lineHeight}
++    style:padding-left={firstDimensionMargin ? `${firstDimensionMargin}px` : undefined}
++    style:padding-right={firstDimensionMargin ? `${firstDimensionMargin}px` : undefined}
++    style:max-width="{pageWidth}px"
++    style:max-height="{height}px"
++    style:--font-family-serif={fontFamilyGroupOne}
++    style:--font-family-sans-serif={fontFamilyGroupTwo}
++    style:--book-content-hint-furigana-font-color={hintFuriganaFontColor}
++    style:--book-content-hint-furigana-shadow-color={hintFuriganaShadowColor}
++    style:--book-content-child-width="{pageWidth}px"
++    style:--book-content-child-height="{height}px"
++    style:--book-content-column-count={1}
++    style:--book-content-image-max-width="{pageWidth}px"
++    class:book-content--avoid-page-break={avoidPageBreak}
++    class:book-content--hide-furigana={hideFurigana}
++    class:book-content--hide-spoiler-image={hideSpoilerImage}
++    class:book-content--furigana-style-partial={furiganaStyle === FuriganaStyle.Partial}
++    class:book-content--furigana-style-full={furiganaStyle === FuriganaStyle.Full}
++    class:book-content--furigana-style-toggle={furiganaStyle === FuriganaStyle.Toggle}
++    class="book-content book-content--writing-vertical-rl m-auto"
++    use:swipe={{ timeframe: 500, minSwipeDistance: $swipeThreshold$, touchAction: 'pan-y' }}
++    on:swipe={onSwipe}
++  >
++    <div class="book-content-container">
++      <HtmlRenderer html={displayedHtml} on:load={() => syncMirror(virtualScrollPos$.getValue())} />
++    </div>
++  </div>
++{/if}
++</div>
+ 
+ {#if !allowDisplay}
+   <div
+@@ -630,4 +705,21 @@
+       height: auto;
+     }
+   }
++
++  // Right page first: the reading order of vertical Japanese books. The
++  // reader root is vertical-rl, which would turn the row into a column.
++  .book-spread {
++    display: flex;
++    flex-direction: row-reverse;
++    justify-content: center;
++    gap: 40px;
++    margin: auto;
++    writing-mode: horizontal-tb;
++
++    > .book-content {
++      flex: none;
++      margin: 0;
++      writing-mode: vertical-rl;
++    }
++  }
+ </style>
+diff --git a/apps/web/src/lib/components/book-reader/book-reader-paginated/page-manager-paginated.ts b/apps/web/src/lib/components/book-reader/book-reader-paginated/page-manager-paginated.ts
+index 282d39b..e03d740 100644
+--- a/apps/web/src/lib/components/book-reader/book-reader-paginated/page-manager-paginated.ts
++++ b/apps/web/src/lib/components/book-reader/book-reader-paginated/page-manager-paginated.ts
+@@ -28,7 +28,10 @@ export class PageManagerPaginated implements PageManager {
+     private pageGap: number,
+     private verticalMode: boolean,
+     private pageChange$: Subject<boolean>,
+-    private sectionRenderComplete$: Subject<number>
++    private sectionRenderComplete$: Subject<number>,
++    // A vertical two-page spread shows two stacked pages side by side, so a
++    // flip advances two pages.
++    private pagesPerFlip = 1
+   ) {
+     sectionList$.pipe(take(1)).subscribe((entries) => {
+       if (!entries.length) {
+@@ -77,7 +80,7 @@ export class PageManagerPaginated implements PageManager {
+     const scrollSizeProp = this.verticalMode ? 'scrollHeight' : 'scrollWidth';
+     const viewportSize = this.verticalMode ? this.height : this.width;
+ 
+-    const offset = viewportSize + this.pageGap;
++    const offset = (viewportSize + this.pageGap) * this.pagesPerFlip;
+     const isUser = true;
+ 
+     if (this.translateX) {
+diff --git a/apps/web/src/lib/data/storage/handler/backup-handler.ts b/apps/web/src/lib/data/storage/handler/backup-handler.ts
+index 3ff9d25..e4b9451 100644
+--- a/apps/web/src/lib/data/storage/handler/backup-handler.ts
++++ b/apps/web/src/lib/data/storage/handler/backup-handler.ts
+@@ -193,7 +193,12 @@ export class BackupStorageHandler extends BaseStorageHandler {
+     );
+   }
+ 
+-  async createExportZip(document: Document, resetOnly: boolean) {
++  // jidoujisho: by default the export is handed to the app as a console
++  // message instead of an <a download> click, which the WebView ignores.
++  async createExportZip(document: Document, resetOnly: boolean, toApp = true) {
++    if (toApp) {
++      console.log('jidoujisho is backing up data...');
++    }
+     if (!resetOnly && this.exportZipWriter) {
+       const a = document.createElement('a');
+       a.href = URL.createObjectURL(await this.exportZipWriter.close());
+@@ -214,10 +219,14 @@ export class BackupStorageHandler extends BaseStorageHandler {
+         URL.revokeObjectURL(a.href);
+       }, 1e4);
+ 
+-      setTimeout(() => {
+-        a.click();
+-        this.clearData();
+-      });
++      if (toApp) {
++        console.log(JSON.stringify({ messageType: 'backup', data: a.href }));
++      } else {
++        setTimeout(() => {
++          a.click();
++          this.clearData();
++        });
++      }
+     } else if (resetOnly) {
+       this.clearData();
+     }

@@ -7,6 +7,7 @@ environment:
   flutter: ">=3.47.0"
 
 dependencies:
+  archive: ^4.0.0
   async_zip: ^0.1.0
   audio_service: ^0.18.9
   audio_session: ^0.1.13
@@ -180,12 +181,7 @@ flutter:
     - assets/ttu-ebook-reader/_app/immutable/
     - assets/ttu-ebook-reader/_app/immutable/assets/
     - assets/ttu-ebook-reader/_app/immutable/chunks/
-    - assets/ttu-ebook-reader/_app/immutable/components/
-    - assets/ttu-ebook-reader/_app/immutable/components/pages/
-    - assets/ttu-ebook-reader/_app/immutable/components/pages/auth/
-    - assets/ttu-ebook-reader/_app/immutable/components/pages/b/
-    - assets/ttu-ebook-reader/_app/immutable/components/pages/manage/
-    - assets/ttu-ebook-reader/_app/immutable/components/pages/settings/
+    - assets/ttu-ebook-reader/_app/immutable/entry/
     - assets/ttu-ebook-reader/auth/
     - assets/ttu-ebook-reader/b/
     - assets/ttu-ebook-reader/fonts/

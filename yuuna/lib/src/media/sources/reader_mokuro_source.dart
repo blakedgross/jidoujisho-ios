@@ -302,9 +302,11 @@ class ReaderMokuroSource extends ReaderMediaSource {
       return null;
     }
 
-    int pageCount = await controller.evaluateJavascript(source: '''
+    /// WKWebView returns every JavaScript number as a double.
+    int pageCount = (await controller.evaluateJavascript(source: '''
 document.body.getElementsByClassName('pageContainer').length
-''');
+''') as num)
+        .toInt();
 
     String relativeUrl = await controller.evaluateJavascript(source: '''
 var bgImage = document.body.getElementsByClassName('pageContainer')[0].style.backgroundImage;

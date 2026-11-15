@@ -371,11 +371,7 @@ class _MokuroCatalogBrowsePageState
             }
             await controller.evaluateJavascript(source: javascriptToExecute);
 
-            if (_mediaItem?.sourceMetadata == null) {
-              await updateOrientation();
-              _mediaItem?.sourceMetadata = 'used';
-              appModel.addMediaItem(_mediaItem!);
-            }
+            await updateSpread();
 
             Future.delayed(const Duration(milliseconds: 300), () {
               controller.evaluateJavascript(source: 'zoomFitToScreen();');
@@ -402,6 +398,9 @@ document.getElementById('pageIdxDisplay').style.color = 'white';
 
   DateTime? lastMessageTime;
   Orientation? lastOrientation;
+
+  /// Spread layout last applied to the Mokuro page, as (spread, gutter).
+  (bool, double)? _appliedSpread;
 
   Duration get consoleMessageDebounce => const Duration(milliseconds: 50);
 
@@ -443,6 +442,14 @@ document.getElementById('pageIdxDisplay').style.color = 'white';
         clearDictionaryResult();
       }
       lastOrientation = orientation;
+    }
+
+    /// Folding, unfolding or rotating changes the window; follow it with one
+    /// or two pages once the volume has loaded.
+    (bool, double) spread =
+        (ReaderSpread.of(context), ReaderSpread.foldGutterOf(context));
+    if (_firstLoadFlag && spread != _appliedSpread) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => updateSpread());
     }
 
     return Focus(
@@ -493,7 +500,7 @@ document.getElementById('pageIdxDisplay').style.color = 'white';
           appBar: _isMokuroPageFoundNotifier.value ? null : buildAppBar(),
           backgroundColor: Colors.black,
           resizeToAvoidBottomInset: false,
-          body: SafeArea(
+          body: ReaderSafeArea(
             top: !mediaSource.extendPageBeyondNavigationBar,
             bottom: false,
             child: Stack(
@@ -741,12 +748,41 @@ backgroundStyle.substring(5, backgroundStyle.length - 2);
 ''');
   }
 
-  Future<void> updateOrientation() async {
+  /// Show two pages side by side on wide windows (see [ReaderSpread]) and
+  /// one page otherwise. While a fold runs down the middle, the gap between
+  /// the pages is widened to its width so no artwork falls into the crease.
+  Future<void> updateSpread() async {
+    bool spread = ReaderSpread.of(context);
+    double gutter = ReaderSpread.foldGutterOf(context);
+    _appliedSpread = (spread, gutter);
+
+    /// Flutter learns of a fold before the WebView resizes, so the layout is
+    /// applied now and again on the page's next resize, when fitting to the
+    /// screen sees the new size. The gap is set in page units, which the
+    /// pan-zoom transform scales; a few rounds of fitting converge on a gap
+    /// of [gutter] screen points.
     await _controller.evaluateJavascript(source: '''
-state.singlePageView = ${MediaQuery.of(context).orientation == Orientation.portrait};
-menuDoublePageView.checked = ${MediaQuery.of(context).orientation != Orientation.portrait};
-saveState();
-updatePage(state.page_idx);
+window.jidoujishoSpread = { single: ${!spread}, gutter: $gutter };
+if (!window.jidoujishoApplySpread) {
+  window.jidoujishoApplySpread = function () {
+    const spread = window.jidoujishoSpread;
+    state.singlePageView = spread.single;
+    menuDoublePageView.checked = !spread.single;
+    pc.style.columnGap = '0px';
+    saveState();
+    updatePage(state.page_idx);
+    if (spread.gutter > 0 && state.page2_idx >= 0) {
+      for (let i = 0; i < 3; i++) {
+        pc.style.columnGap = (spread.gutter / pz.getTransform().scale) + 'px';
+        zoomDefault();
+      }
+    }
+  };
+  window.addEventListener('resize', function () {
+    setTimeout(window.jidoujishoApplySpread, 100);
+  });
+}
+window.jidoujishoApplySpread();
 ''');
   }
 

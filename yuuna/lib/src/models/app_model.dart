@@ -203,6 +203,12 @@ class AppModel with ChangeNotifier {
   Directory get appDirectory => _appDirectory;
   late final Directory _appDirectory;
 
+  /// The folder users put media in. On iOS this is the app's Documents
+  /// folder, which the Files app shows under On My iPhone, so app data is
+  /// kept out of it. Android uses external storage instead.
+  Directory get sharedDocumentsDirectory => _sharedDocumentsDirectory;
+  late final Directory _sharedDocumentsDirectory;
+
   /// Directory where database data is persisted.
   Directory get databaseDirectory => _databaseDirectory;
   late final Directory _databaseDirectory;
@@ -1129,6 +1135,45 @@ class AppModel with ChangeNotifier {
     'assets/meta/icon.png',
   );
 
+  /// iOS moves the app's data container on every install and update, which
+  /// strands absolute paths persisted under the previous container: local
+  /// media identifiers, thumbnails and last picked directories. Rewrites
+  /// them to the current container.
+  Future<void> rebaseSandboxPaths() async {
+    String root = path.dirname(sharedDocumentsDirectory.path);
+    RegExp containerRoot =
+        RegExp(r'/[^\s]*?/Containers/Data/Application/[0-9A-Fa-f-]{36}');
+
+    String? rebase(String? value) => value?.replaceAll(containerRoot, root);
+    bool isStale(String? value) =>
+        value != null && value.contains(containerRoot) && rebase(value) != value;
+
+    for (dynamic key in _preferences.keys.toList()) {
+      dynamic value = _preferences.get(key);
+      if (value is String && isStale(value)) {
+        await _preferences.put(key, rebase(value));
+      }
+    }
+
+    _database.writeTxnSync(() {
+      for (MediaItem item in _database.mediaItems.where().findAllSync()) {
+        if (![item.mediaIdentifier, item.imageUrl, item.audioUrl, item.extraUrl]
+            .any(isStale)) {
+          continue;
+        }
+
+        /// The unique key derives from the identifier, so replace the row.
+        _database.mediaItems.deleteSync(item.id!);
+        item
+          ..mediaIdentifier = rebase(item.mediaIdentifier)!
+          ..imageUrl = rebase(item.imageUrl)
+          ..audioUrl = rebase(item.audioUrl)
+          ..extraUrl = rebase(item.extraUrl);
+        _database.mediaItems.putSync(item);
+      }
+    });
+  }
+
   /// Injects licenses to be displayed in the licenses page that aren't
   /// pre-included by Flutter upon compilation but are included as assets.
   Future<void> injectAssetLicenses() async {
@@ -1159,8 +1204,13 @@ class AppModel with ChangeNotifier {
       _androidDeviceInfo = await DeviceInfoPlugin().androidInfo;
     }
 
-    /// Initialise persistent key-value store.
-    await Hive.initFlutter();
+    /// Initialise persistent key-value store. hive_flutter defaults to the
+    /// documents directory, which iOS shares in the Files app.
+    if (Platform.isIOS) {
+      Hive.init((await getApplicationSupportDirectory()).path);
+    } else {
+      await Hive.initFlutter();
+    }
     _preferences = await Hive.openBox('appModel');
     _dictionaryHistory = await Hive.openBox('dictionaryHistory');
 
@@ -1170,7 +1220,10 @@ class AppModel with ChangeNotifier {
 
     /// These directories will commonly be accessed.
     _temporaryDirectory = await getTemporaryDirectory();
-    _appDirectory = await getApplicationDocumentsDirectory();
+    _sharedDocumentsDirectory = await getApplicationDocumentsDirectory();
+    _appDirectory = Platform.isIOS
+        ? await getApplicationSupportDirectory()
+        : _sharedDocumentsDirectory;
     _databaseDirectory = await getApplicationSupportDirectory();
     _browserDirectory = Directory(path.join(appDirectory.path, 'browser'));
     _thumbnailsDirectory =
@@ -1242,6 +1295,10 @@ class AppModel with ChangeNotifier {
       directory: _databaseDirectory.path,
       maxSizeMiB: 8192,
     );
+
+    if (Platform.isIOS) {
+      await rebaseSandboxPaths();
+    }
 
     /// Preloads the search database in memory.
     searchDictionary(
@@ -2336,7 +2393,7 @@ class AppModel with ChangeNotifier {
     }
 
     Directory outputDirectory =
-        Directory(path.join(appDirectory.path, 'Anki Exports'));
+        Directory(path.join(sharedDocumentsDirectory.path, 'Anki Exports'));
     outputDirectory.createSync(recursive: true);
     File packageFile = await exporter.buildPackage(outputDirectory);
 
@@ -3317,7 +3374,7 @@ class AppModel with ChangeNotifier {
     /// user-visible root in the Files app.
     List<String> paths = Platform.isAndroid
         ? await ExternalPath.getExternalStorageDirectories()
-        : [appDirectory.path];
+        : [sharedDocumentsDirectory.path];
     for (String path in paths) {
       Directory directory = Directory(path);
       if (!directories.contains(directory)) {

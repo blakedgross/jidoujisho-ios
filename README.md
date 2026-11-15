@@ -175,6 +175,16 @@ A primer on the basics of the application is as follows.
 * 📝 **You may edit the card fields** before exporting to AnkiDroid
 * ⚛️ **Customisation of the Anki export** is possible by creating your own export profile
 
+### 🍎 iOS and iPhone Duo
+
+This fork runs on iOS 15 and later and is built with Flutter 3.47 and Xcode 27.
+
+* 🗂️ **Put media in the Files app** under *On My iPhone › jidoujisho*. The in-app file pickers open that folder. A Mokuro volume needs its HTML file and image folder next to each other.
+* 📦 **Anki on a computer**: iOS has no AnkiDroid, so exporting a card queues it. To send the queue, pick **Export cards for Anki** from the home menu. It writes a `.apkg` (standard *jidoujisho Kinomoto* note type, media included) to *Anki Exports* and opens the share sheet. AirDrop or save it to the computer, then open it in Anki to import. The deck button next to the deck list in the Card Creator adds a deck; Anki creates it on import.
+* 📖 **Two-page spreads**: on an unfolded iPhone Duo, or any window that is landscape and at least 600pt on its short side (iPads, Android tablets and foldables), Mokuro manga and ッツ Ebook Reader books show two pages side by side. Vertical books use right-to-left page order. Folding, unfolding and rotating switch between one and two pages on the fly. While the Duo is half-folded the gutter widens to the fold, so nothing lands in the crease.
+* 🔧 The bundled ッツ Ebook Reader is rebuilt from upstream commit `8d7115f` with jidoujisho's changes. Run `yuuna/tool/ttu-ebook-reader/build.sh` to regenerate `yuuna/assets/ttu-ebook-reader`.
+* 🛠️ Build: `cd yuuna && flutter build ios`. Open `ios/Runner.xcworkspace` in Xcode to sign and run on a device.
+
 ### 🙌 User Tips
 
 * 🇯🇵 Can't find Japanese subtitles for your media? Try finding what you need at <b><a href="https://kitsunekko.net">kitsunekko</a></b> or <b><a href="https://github.com/orgs/Nekomoekissaten-SUB/projects/1">Nekomoekisatten</a></b>

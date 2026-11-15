@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
-import 'package:flutter_archive/flutter_archive.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 import 'package:yuuna/creator.dart';
@@ -215,31 +215,29 @@ class AnkiPackageExporter {
       throw StateError('No notes queued for export');
     }
 
-    Directory buildDirectory =
-        Directory(path.join(rootDirectory.path, 'build'));
-    if (buildDirectory.existsSync()) {
-      buildDirectory.deleteSync(recursive: true);
+    File databaseFile = File(path.join(rootDirectory.path, 'collection.anki2'));
+    if (databaseFile.existsSync()) {
+      databaseFile.deleteSync();
     }
-    buildDirectory.createSync(recursive: true);
+    await _writeCollection(databasePath: databaseFile.path, notes: notes);
 
-    await _writeCollection(
-      databasePath: path.join(buildDirectory.path, 'collection.anki2'),
-      notes: notes,
-    );
+    Archive archive = Archive()
+      ..addFile(
+          ArchiveFile.bytes('collection.anki2', databaseFile.readAsBytesSync()));
+    databaseFile.deleteSync();
 
     /// Anki packages store media as numbered files plus a JSON map from
     /// number to file name.
     Map<String, String> mediaMap = {};
-    int index = 0;
     for (FileSystemEntity entity in _mediaDirectory.listSync()) {
       if (entity is File) {
-        entity.copySync(path.join(buildDirectory.path, '$index'));
-        mediaMap['$index'] = path.basename(entity.path);
-        index++;
+        String number = '${mediaMap.length}';
+        archive.addFile(ArchiveFile.bytes(number, entity.readAsBytesSync()));
+        mediaMap[number] = path.basename(entity.path);
       }
     }
-    File(path.join(buildDirectory.path, 'media'))
-        .writeAsStringSync(jsonEncode(mediaMap));
+    archive.addFile(
+        ArchiveFile.bytes('media', utf8.encode(jsonEncode(mediaMap))));
 
     String timestamp = DateTime.now()
         .toIso8601String()
@@ -248,11 +246,7 @@ class AnkiPackageExporter {
         .replaceAll(RegExp('[-:]'), '');
     File packageFile = File(
         path.join(outputDirectory.path, 'jidoujisho-$timestamp.apkg'));
-    await ZipFile.createFromDirectory(
-      sourceDir: buildDirectory,
-      zipFile: packageFile,
-    );
-    buildDirectory.deleteSync(recursive: true);
+    packageFile.writeAsBytesSync(ZipEncoder().encodeBytes(archive));
 
     return packageFile;
   }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_logs/flutter_logs.dart';
+import 'package:foldable/foldable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:network_to_file_image/network_to_file_image.dart';
 import 'package:receive_intent/receive_intent.dart' as intents;
@@ -357,25 +358,30 @@ class _JidoujishoAppState extends ConsumerState<JidoujishoApp>
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      navigatorKey: appModel.navigatorKey,
-      home: home,
-      locale: locale,
-      localizationsDelegates: const [
-        JidoujishoLocalizationsDelegate(),
-      ],
-      supportedLocales: appModel.locales.values,
-      themeMode: themeMode,
-      theme: appModel.theme,
-      darkTheme: appModel.darkTheme,
-      // This is responsible for the initialising the global spacing across
-      // the entire project, making use of the [spaces] package.
-      builder: (context, child) => Spacing(
-        dataBuilder: (context) {
-          return SpacingData.generate(10);
-        },
-        child: child!,
+    /// Publishes iPhone Duo hinge posture and fold regions to the tree. It
+    /// leaves [MediaQuery.displayFeatures] untouched, so dialogs keep their
+    /// full width on the unfolded display.
+    return FoldableProvider(
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        navigatorKey: appModel.navigatorKey,
+        home: home,
+        locale: locale,
+        localizationsDelegates: const [
+          JidoujishoLocalizationsDelegate(),
+        ],
+        supportedLocales: appModel.locales.values,
+        themeMode: themeMode,
+        theme: appModel.theme,
+        darkTheme: appModel.darkTheme,
+        // This is responsible for the initialising the global spacing across
+        // the entire project, making use of the [spaces] package.
+        builder: (context, child) => Spacing(
+          dataBuilder: (context) {
+            return SpacingData.generate(10);
+          },
+          child: child!,
+        ),
       ),
     );
   }
