@@ -172,6 +172,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/anki/
     - assets/licenses/
     - assets/meta/
     - assets/language/japanese/ipadic/

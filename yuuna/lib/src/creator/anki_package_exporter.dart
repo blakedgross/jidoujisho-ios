@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 import 'package:yuuna/creator.dart';
@@ -56,18 +57,12 @@ class PendingAnkiNote {
 }
 
 /// A note type an [AnkiPackageExporter] can write notes as.
-class AnkiNoteType {
-  /// Define a note type with a single card template.
+abstract class AnkiNoteType {
+  /// Define a note type.
   const AnkiNoteType({
     required this.id,
     required this.name,
     required this.fields,
-    required this.templateName,
-    required this.frontTemplate,
-    required this.backTemplate,
-    required this.css,
-    required this.requirements,
-    this.modifiedSeconds,
   });
 
   /// Note type id. Anki imports notes into an existing note type with the
@@ -80,28 +75,16 @@ class AnkiNoteType {
   /// Field names, in order.
   final List<String> fields;
 
-  /// Name of the card template.
-  final String templateName;
-
-  /// Front of the card template.
-  final String frontTemplate;
-
-  /// Back of the card template.
-  final String backTemplate;
-
-  /// Styling of the note type.
-  final String css;
-
-  /// Anki's `req`: the fields the card template needs to be generated.
-  final List<dynamic> requirements;
-
-  /// Fixed modification time in seconds, or null for the export time. Anki
-  /// only replaces an existing note type's templates and styling with a
-  /// newer one.
-  final int? modifiedSeconds;
+  /// The note type as stored in a package's collection, the JSON of Anki's
+  /// `col.models`. [deckId] is the deck of the exported cards and
+  /// [modifiedSeconds] the export time.
+  Future<Map<String, dynamic>> model({
+    required int deckId,
+    required int modifiedSeconds,
+  });
 
   /// The note type the Android build creates through the AnkiDroid API.
-  static final AnkiNoteType standard = AnkiNoteType(
+  static final AnkiNoteType standard = TemplatedAnkiNoteType(
     id: AnkiPackageExporter.standardModelId,
     name: AnkiMapping.standardModelName,
     fields: AnkiPackageExporter.standardFields,
@@ -118,81 +101,138 @@ class AnkiNoteType {
     ],
   );
 
-  /// Migaku's "Migaku Japanese Targeted Sentence" note type, with the id and
-  /// fields of the note type Migaku installs in Anki, so exported notes join
-  /// the cards made with Migaku. See [MigakuNoteFormatter].
-  ///
-  /// The note type is dated to 1970 so Anki keeps Migaku's own templates
-  /// and styling. The simple templates here only show where Migaku's note
-  /// type is not installed.
-  static const AnkiNoteType migakuJapaneseTargetedSentence = AnkiNoteType(
+  /// Migaku's "Migaku Japanese Targeted Sentence" note type, so exported
+  /// notes join the cards made with Migaku. See [MigakuNoteFormatter].
+  static const AnkiNoteType migakuJapaneseTargetedSentence =
+      BundledAnkiNoteType(
     id: 1687936123297,
     name: 'Migaku Japanese Targeted Sentence',
     fields: MigakuNoteFormatter.fields,
-    templateName: 'Standard',
-    frontTemplate: _migakuFrontTemplate,
-    backTemplate: _migakuBackTemplate,
-    css: _migakuCss,
-    requirements: [
-      [
-        0,
-        'any',
-        [0, 2]
-      ]
-    ],
-    modifiedSeconds: 1,
+    asset: 'assets/anki/migaku_japanese_targeted_sentence.json',
   );
-
-  /// Renders Migaku's inline furigana, `食[た;k2]べる`, as ruby text.
-  static const String _migakuFrontTemplate = '''
-<div class="sentence">{{Sentence}}</div>
-<script>
-document.querySelectorAll('.sentence').forEach(function (element) {
-  element.innerHTML = element.innerHTML
-    .replace(/\\{([^}]*)\\}/g, '\$1')
-    .replace(/([^ <>\\[\\]]+)\\[([^\\];]*)(;[^\\]]*)?\\]/g, function (match, base, reading) {
-      return reading ? '<ruby>' + base + '<rt>' + reading + '</rt></ruby>' : base;
-    })
-    .replace(/ /g, '');
-});
-</script>''';
-
-  static const String _migakuBackTemplate = '''
-{{FrontSide}}
-{{Sentence Audio}}
-<hr>
-<div class="translation">{{Translation}}</div>
-<div class="screenshot">{{Screenshot}}</div>
-<div class="definitions">{{Definitions}}</div>
-{{Word Audio}}''';
-
-  static const String _migakuCss = '''
-.card {
-  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
-  font-size: 20px;
-  text-align: center;
 }
 
-.sentence {
-  font-size: 26px;
+/// A note type with a single card template, written from its parts.
+class TemplatedAnkiNoteType extends AnkiNoteType {
+  /// Define a note type with a single card template.
+  const TemplatedAnkiNoteType({
+    required super.id,
+    required super.name,
+    required super.fields,
+    required this.templateName,
+    required this.frontTemplate,
+    required this.backTemplate,
+    required this.css,
+    required this.requirements,
+  });
+
+  /// Name of the card template.
+  final String templateName;
+
+  /// Front of the card template.
+  final String frontTemplate;
+
+  /// Back of the card template.
+  final String backTemplate;
+
+  /// Styling of the note type.
+  final String css;
+
+  /// Anki's `req`: the fields the card template needs to be generated.
+  final List<dynamic> requirements;
+
+  @override
+  Future<Map<String, dynamic>> model({
+    required int deckId,
+    required int modifiedSeconds,
+  }) async {
+    return {
+      'id': '$id',
+      'name': name,
+      'type': 0,
+      'mod': modifiedSeconds,
+      'usn': -1,
+      'sortf': 0,
+      'did': deckId,
+      'tmpls': [
+        {
+          'name': templateName,
+          'ord': 0,
+          'qfmt': frontTemplate,
+          'afmt': backTemplate,
+          'bqfmt': '',
+          'bafmt': '',
+          'did': null,
+        },
+      ],
+      'flds': [
+        for (int i = 0; i < fields.length; i++)
+          {
+            'name': fields[i],
+            'ord': i,
+            'sticky': false,
+            'rtl': false,
+            'font': 'Arial',
+            'size': 20,
+            'media': [],
+          },
+      ],
+      'css': css,
+      'latexPre': r'\documentclass[12pt]{article}'
+          '\n'
+          r'\special{papersize=3in,5in}'
+          '\n'
+          r'\usepackage[utf8]{inputenc}'
+          '\n'
+          r'\usepackage{amssymb,amsmath}'
+          '\n'
+          r'\pagestyle{empty}'
+          '\n'
+          r'\setlength{\parindent}{0in}'
+          '\n'
+          r'\begin{document}'
+          '\n',
+      'latexPost': r'\end{document}',
+      'latexsvg': false,
+      'tags': [],
+      'vers': [],
+      'req': requirements,
+    };
+  }
 }
 
-.sentence strong {
-  color: #2880ff;
-}
+/// A note type copied verbatim from an Anki collection, bundled as the
+/// JSON of its `col.models` entry.
+///
+/// Anki's import can be set to always replace an existing note type's
+/// templates and styling with the package's; only an exact copy of the
+/// note type in the user's collection imports into it without changing it.
+class BundledAnkiNoteType extends AnkiNoteType {
+  /// Define a note type bundled at [asset].
+  const BundledAnkiNoteType({
+    required super.id,
+    required super.name,
+    required super.fields,
+    required this.asset,
+  });
 
-.translation {
-  color: #666666;
-}
+  /// Path of the bundled JSON.
+  final String asset;
 
-.screenshot img {
-  max-width: 100%;
-  max-height: 365px;
-}
-
-.definitions {
-  text-align: left;
-}''';
+  @override
+  Future<Map<String, dynamic>> model({
+    required int deckId,
+    required int modifiedSeconds,
+  }) async {
+    Map<String, dynamic> model = jsonDecode(await rootBundle.loadString(asset));
+    List<String> bundledFields = [
+      for (Map<String, dynamic> field in model['flds']) field['name'] as String
+    ];
+    if (model['id'] != id || bundledFields.join('\x1f') != fields.join('\x1f')) {
+      throw StateError('$asset does not hold the note type $name');
+    }
+    return model;
+  }
 }
 
 /// Exports cards as an Anki package (.apkg) for import into desktop Anki.
@@ -436,6 +476,10 @@ class AnkiPackageExporter {
       for (String deck in notes.map((note) => note.deck).toSet())
         deck: deck == 'Default' ? 1 : deckIdForName(deck),
     };
+    Map<String, dynamic> model = await noteType.model(
+      deckId: deckIds.values.first,
+      modifiedSeconds: nowSeconds,
+    );
 
     Database database = await openDatabase(databasePath);
     try {
@@ -456,13 +500,7 @@ class AnkiPackageExporter {
           'usn': 0,
           'ls': 0,
           'conf': jsonEncode(_collectionConfig),
-          'models': jsonEncode({
-            '${noteType.id}': _model(
-              noteType: noteType,
-              deckId: deckIds.values.first,
-              modifiedSeconds: nowSeconds,
-            ),
-          }),
+          'models': jsonEncode({'${noteType.id}': model}),
           'decks': jsonEncode({
             '1': _deck(id: 1, name: 'Default', modifiedSeconds: nowSeconds),
             for (MapEntry<String, int> entry in deckIds.entries)
@@ -585,65 +623,6 @@ class AnkiPackageExporter {
       value = value ~/ base;
     } while (value > BigInt.zero);
     return buffer.toString().split('').reversed.join();
-  }
-
-  static Map<String, dynamic> _model({
-    required AnkiNoteType noteType,
-    required int deckId,
-    required int modifiedSeconds,
-  }) {
-    return {
-      'id': '${noteType.id}',
-      'name': noteType.name,
-      'type': 0,
-      'mod': noteType.modifiedSeconds ?? modifiedSeconds,
-      'usn': -1,
-      'sortf': 0,
-      'did': deckId,
-      'tmpls': [
-        {
-          'name': noteType.templateName,
-          'ord': 0,
-          'qfmt': noteType.frontTemplate,
-          'afmt': noteType.backTemplate,
-          'bqfmt': '',
-          'bafmt': '',
-          'did': null,
-        },
-      ],
-      'flds': [
-        for (int i = 0; i < noteType.fields.length; i++)
-          {
-            'name': noteType.fields[i],
-            'ord': i,
-            'sticky': false,
-            'rtl': false,
-            'font': 'Arial',
-            'size': 20,
-            'media': [],
-          },
-      ],
-      'css': noteType.css,
-      'latexPre': r'\documentclass[12pt]{article}'
-          '\n'
-          r'\special{papersize=3in,5in}'
-          '\n'
-          r'\usepackage[utf8]{inputenc}'
-          '\n'
-          r'\usepackage{amssymb,amsmath}'
-          '\n'
-          r'\pagestyle{empty}'
-          '\n'
-          r'\setlength{\parindent}{0in}'
-          '\n'
-          r'\begin{document}'
-          '\n',
-      'latexPost': r'\end{document}',
-      'latexsvg': false,
-      'tags': [],
-      'vers': [],
-      'req': noteType.requirements,
-    };
   }
 
   static Map<String, dynamic> _deck({
