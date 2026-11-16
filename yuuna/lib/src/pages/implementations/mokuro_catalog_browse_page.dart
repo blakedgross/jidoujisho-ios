@@ -327,6 +327,8 @@ class _MokuroCatalogBrowsePageState
         verticalScrollBarEnabled: false,
         horizontalScrollBarEnabled: false,
         initialScale: MediaQuery.of(context).size.width ~/ 1.5,
+        /// See [nativeZoomJs].
+        maximumZoomScale: 8,
       ),
       initialUrlRequest: URLRequest(
           url: WebUri(widget.catalog?.url ?? widget.item!.mediaIdentifier)),
@@ -379,6 +381,10 @@ class _MokuroCatalogBrowsePageState
 
             await updateSpread();
 
+            if (Platform.isIOS) {
+              await controller.evaluateJavascript(source: nativeZoomJs);
+            }
+
             Future.delayed(const Duration(milliseconds: 300), () {
               controller.evaluateJavascript(source: 'zoomFitToScreen();');
             });
@@ -389,6 +395,77 @@ class _MokuroCatalogBrowsePageState
       },
     );
   }
+
+  /// On iOS, pinch zoom is handed from Mokuro's JavaScript pan-zoom library
+  /// to WebKit. The library moves the page from touch events and repaints it
+  /// in the web content process, at most 60 times a second; WebKit zooms
+  /// and pans on its compositor, at the display's full 120 Hz, as in
+  /// Safari. The library still fits pages to the screen.
+  ///
+  /// Double-tap zoom stays off so taps on text look up at once. Turning the
+  /// page zooms back out.
+  static const String nativeZoomJs = '''
+(function () {
+  if (window.jidoujishoNativeZoom) {
+    return;
+  }
+  window.jidoujishoNativeZoom = true;
+
+  var viewport = document.querySelector('meta[name=viewport]');
+  if (!viewport) {
+    viewport = document.createElement('meta');
+    viewport.name = 'viewport';
+    document.head.appendChild(viewport);
+  }
+  var zoomable = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=8, user-scalable=yes';
+  viewport.content = zoomable;
+  document.documentElement.style.touchAction = 'manipulation';
+  pz.pause();
+
+  // Mokuro fits pages to window.innerWidth and innerHeight, which shrink
+  // to the zoomed-in part while zoomed. Scaled back up they give the size
+  // of the whole window. (Mokuro pages have no doctype, so the document
+  // element's size is the page's, not the window's.)
+  function windowSize(zoomedSize) {
+    return window.visualViewport ? zoomedSize * visualViewport.scale : zoomedSize;
+  }
+  getScreenWidth = function () {
+    return windowSize(window.visualViewport ? visualViewport.width : innerWidth) - getOffsetLeft() - getOffsetRight();
+  };
+  getScreenHeight = function () {
+    return windowSize(window.visualViewport ? visualViewport.height : innerHeight) - getOffsetTop() - getOffsetBottom();
+  };
+
+  // Zooming back out, by turning the page or by the window resizing while
+  // zoomed, settles after Mokuro has fitted the page, and panning while
+  // zoomed scrolls the page, so the page is scrolled back and fitted again
+  // once it has.
+  function refit() {
+    window.scrollTo(0, 0);
+    if (window.jidoujishoApplySpread) {
+      jidoujishoApplySpread();
+    } else {
+      zoomDefault();
+    }
+  }
+
+  var turnPage = updatePage;
+  updatePage = function (index) {
+    turnPage(index);
+    if (window.visualViewport && visualViewport.scale > 1.01) {
+      viewport.content = zoomable.replace('maximum-scale=8', 'maximum-scale=1');
+      setTimeout(function () {
+        viewport.content = zoomable;
+        refit();
+      }, 150);
+    }
+  };
+
+  window.addEventListener('resize', function () {
+    setTimeout(refit, 500);
+  });
+})();
+''';
 
   /// Text of the speech bubble of the last lookup.
   String _bubbleText = '';
@@ -584,13 +661,11 @@ document.getElementById('pageIdxDisplay').style.color = 'white';
       int page2Idx = int.tryParse(data['page2_idx'].toString()) ?? -1;
       int pageIdx = int.tryParse(data['page_idx'].toString()) ?? -1;
 
-      if (page2Idx != -1) {
-        _mediaItem!.position = page2Idx;
-        appModel.updateMediaItem(_mediaItem!);
-        return;
-      }
-      if (pageIdx != -1) {
-        _mediaItem!.position = pageIdx;
+      /// Saved every few seconds; the database is only written when the
+      /// page changed.
+      int position = page2Idx != -1 ? page2Idx : pageIdx;
+      if (position != -1 && position != _mediaItem!.position) {
+        _mediaItem!.position = position;
         appModel.updateMediaItem(_mediaItem!);
       }
     } catch (e) {
