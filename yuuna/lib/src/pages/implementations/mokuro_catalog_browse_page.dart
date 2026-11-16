@@ -403,7 +403,7 @@ class _MokuroCatalogBrowsePageState
   /// Safari. The library still fits pages to the screen.
   ///
   /// Double-tap zoom stays off so taps on text look up at once. Turning the
-  /// page zooms back out.
+  /// page zooms back out. The menu stays fixed on screen while zoomed.
   static const String nativeZoomJs = '''
 (function () {
   if (window.jidoujishoNativeZoom) {
@@ -435,6 +435,33 @@ class _MokuroCatalogBrowsePageState
   getScreenHeight = function () {
     return windowSize(window.visualViewport ? visualViewport.height : innerHeight) - getOffsetTop() - getOffsetBottom();
   };
+
+  // WebKit zooms fixed elements with the page. The menu and the corner that
+  // shows it again are moved into a layer that undoes the zoom and follows
+  // the zoomed-in part, so they keep their place and size on screen. A
+  // transformed layer contains its fixed children, so they stay laid out
+  // as before at scale 1.
+  var pinned = document.createElement('div');
+  pinned.id = 'jidoujishoPinned';
+  pinned.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 0; z-index: 1000; transform-origin: 0 0;';
+  ['topMenu', 'showMenuA'].forEach(function (id) {
+    var element = document.getElementById(id);
+    if (element) {
+      pinned.appendChild(element);
+    }
+  });
+  document.body.appendChild(pinned);
+
+  function pin() {
+    var zoom = visualViewport;
+    pinned.style.transform = zoom.scale > 1.001
+        ? 'translate(' + zoom.offsetLeft + 'px, ' + zoom.offsetTop + 'px) scale(' + (1 / zoom.scale) + ')'
+        : '';
+  }
+  if (window.visualViewport) {
+    visualViewport.addEventListener('resize', pin);
+    visualViewport.addEventListener('scroll', pin);
+  }
 
   // Zooming back out, by turning the page or by the window resizing while
   // zoomed, settles after Mokuro has fitted the page, and panning while
